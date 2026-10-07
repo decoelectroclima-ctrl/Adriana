@@ -1,0 +1,820 @@
+package com.example.ui.dialogs
+
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.data.SoltarFramework
+import com.example.data.WisdomBank
+import com.example.data.WisdomCard
+import com.example.ui.SoltarViewModel
+import com.example.ui.theme.*
+
+@Composable
+fun WisdomLibraryDialog(viewModel: SoltarViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    val checkins by viewModel.checkins.collectAsState()
+    
+    val startTs = settings?.breakupDateTimestamp ?: (System.currentTimeMillis() - (14L * 24 * 3600 * 1000))
+    val days = ((System.currentTimeMillis() - startTs) / (24 * 3600 * 1000L)).coerceAtLeast(0L)
+    val isMilestoneReached = days >= 30 || checkins.size >= 5
+
+    var contributionInput by remember { mutableStateOf("") }
+    var contributedCards by remember { mutableStateOf(listOf<WisdomCard>()) }
+    var successMsg by remember { mutableStateOf<String?>(null) }
+
+    val savedContributions by viewModel.wisdomContributions.collectAsState()
+    val favoriteWisdomCardIds by viewModel.favoriteWisdomCardIds.collectAsState()
+
+    val framework = uiState.preferredFramework
+    val cards = WisdomBank.cards.filter { it.framework == framework }
+    val filteredContributions = savedContributions.filter { it.framework == framework.key }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SoltarBackground)
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextSecondary)
+                    }
+                    Text(
+                        text = "BIBLIOTECA DE SABIDURÍA VIVA (C4)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Milestone contribution section (Banco Personal / Vivo)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, if (isMilestoneReached) SoltarAmber else SoltarBorder)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = if (isMilestoneReached) "Hito Alcanzado: Banco Personal de Sabiduría" else "Banco Personal (Se desbloquea al alcanzar 30 días o 5 check-ins)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (isMilestoneReached) SoltarAmber else TextSecondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Guarda tus propias frases de resiliencia y claridad en tu banco personal para fortalecer tu proceso de reconstrucción.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            lineHeight = 18.sp
+                        )
+
+                        if (isMilestoneReached) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = contributionInput,
+                                onValueChange = { contributionInput = it },
+                                label = { Text("Escribe tu frase de sabiduría...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    if (contributionInput.isNotBlank()) {
+                                        viewModel.saveWisdomContribution(framework.key, contributionInput.trim())
+                                        contributionInput = ""
+                                        successMsg = "¡Frase guardada en tu banco personal!"
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber)
+                            ) {
+                                Text("Guardar en mi Banco Personal", color = SoltarBackground, fontWeight = FontWeight.Bold)
+                            }
+                            successMsg?.let {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(it, color = SoltarSage, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Display Saved Contributions from Room
+                if (filteredContributions.isNotEmpty()) {
+                    Text("Tus Aportaciones Personales Guardadas:", style = MaterialTheme.typography.titleSmall, color = SoltarAmber, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    filteredContributions.forEach { item ->
+                        val card = WisdomCard(
+                            id = "saved_${item.id}",
+                            framework = framework,
+                            title = "Mi Banco Personal",
+                            quote = item.quote,
+                            author = item.author,
+                            reflection = item.reflection
+                        )
+                        WisdomCardItem(
+                            card = card,
+                            context = context,
+                            isFavorite = favoriteWisdomCardIds.contains(card.id),
+                            onToggleFavorite = { viewModel.toggleFavoriteWisdomCard(card.id) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                Text("Sabiduría del Marco (${framework.title}):", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                cards.forEach { card ->
+                    WisdomCardItem(
+                        card = card,
+                        context = context,
+                        isFavorite = favoriteWisdomCardIds.contains(card.id),
+                        onToggleFavorite = { viewModel.toggleFavoriteWisdomCard(card.id) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun WisdomCardItem(
+    card: WisdomCard,
+    context: android.content.Context,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+        border = BorderStroke(1.dp, SoltarBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(card.title, style = MaterialTheme.typography.labelSmall, color = SoltarAmber, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Quitar de favoritos" else "Guardar en favoritos",
+                            tint = if (isFavorite) SoltarAmber else TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = {
+                            val uri = com.example.ui.screens.generateShareableCardBitmap(
+                                context = context,
+                                title = "Sabiduría ADRIANA",
+                                subtitle = card.title,
+                                quote = "«${card.quote}»\n— ${card.author}",
+                                streakText = "ADRIANA • ${card.framework.title}"
+                            )
+                            if (uri != null) {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/png"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Compartir sabiduría ADRIANA"))
+                            } else {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "«${card.quote}» — ${card.author} (ADRIANA App)")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Compartir sabiduría"))
+                            }
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Compartir tarjeta", tint = SoltarAmber, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(card.quote, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, lineHeight = 22.sp)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text("- ${card.author}", style = MaterialTheme.typography.labelSmall, color = TextSecondary, modifier = Modifier.align(Alignment.End))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(card.reflection, style = MaterialTheme.typography.bodySmall, color = TextSecondary, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+fun FavoriteWisdomCardsDialog(viewModel: SoltarViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val favoriteCardIds by viewModel.favoriteWisdomCardIds.collectAsState()
+    val savedContributions by viewModel.wisdomContributions.collectAsState()
+
+    val favoriteCards = remember(favoriteCardIds, savedContributions) {
+        val bankCards = WisdomBank.cards.filter { favoriteCardIds.contains(it.id) }
+        val customCards = savedContributions
+            .map { item ->
+                WisdomCard(
+                    id = "saved_${item.id}",
+                    framework = SoltarFramework.fromKey(item.framework),
+                    title = "Mi Banco Personal",
+                    quote = item.quote,
+                    author = item.author,
+                    reflection = item.reflection
+                )
+            }
+            .filter { favoriteCardIds.contains(it.id) }
+        (bankCards + customCards)
+    }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SoltarBackground)
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextSecondary)
+                    }
+                    Text(
+                        text = "MIS FRASES FAVORITAS",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (favoriteCards.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp, horizontal = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FavoriteBorder,
+                                contentDescription = null,
+                                tint = SoltarAmber.copy(alpha = 0.6f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = "Aún no has guardado ninguna frase.",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "Toca el corazón en cualquier tarjeta de sabiduría para guardarla aquí.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                } else {
+                    favoriteCards.forEach { card ->
+                        WisdomCardItem(
+                            card = card,
+                            context = context,
+                            isFavorite = true,
+                            onToggleFavorite = { viewModel.toggleFavoriteWisdomCard(card.id) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ClosingRitualDialog(viewModel: SoltarViewModel, onDismiss: () -> Unit) {
+    val settings = viewModel.settings.collectAsState().value
+    val checkins = viewModel.checkins.collectAsState().value
+    val journals = viewModel.journalEntries.collectAsState().value
+    val letters = viewModel.letters.collectAsState().value
+    val framework = SoltarFramework.fromKey(settings?.preferredFramework)
+
+    val startTs = settings?.breakupDateTimestamp ?: (System.currentTimeMillis() - (14L * 24 * 3600 * 1000))
+    val days = ((System.currentTimeMillis() - startTs) / (24 * 3600 * 1000L)).coerceAtLeast(0L)
+    
+    // Gating C5: desbloqueado solo si racha >= 3 días o al menos 3 check-ins recientes
+    val isUnlocked = days >= 3 || checkins.size >= 3
+
+    val ritualInterview by viewModel.ritualInterview.collectAsState()
+    var openAnswerInput by remember { mutableStateOf("") }
+    var isEditingLetter by remember { mutableStateOf(false) }
+    var editedLetterText by remember { mutableStateOf("") }
+
+    LaunchedEffect(ritualInterview.finalLetter) {
+        if (ritualInterview.finalLetter.isNotBlank() && editedLetterText.isBlank()) {
+            editedLetterText = ritualInterview.finalLetter
+        }
+    }
+
+    LaunchedEffect(isUnlocked) {
+        if (isUnlocked) {
+            viewModel.openRitualInterview()
+        }
+    }
+
+    val handleDismiss = {
+        if (isUnlocked) {
+            viewModel.pauseRitualInterview()
+        }
+        onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = handleDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = if (isUnlocked) "Ritual de Cierre Adaptativo (IA)" else "Ritual Bloqueado",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                IconButton(onClick = handleDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextSecondary)
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                if (!isUnlocked) {
+                    Text(
+                        "El ritual de cierre es una ceremonia profunda que requiere haber recorrido al menos 3 días de proceso o acumulado check-ins estables para consolidar tu soberanía interior.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        lineHeight = 22.sp
+                    )
+                } else {
+                    if (ritualInterview.isLoadingNextQuestion) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CircularProgressIndicator(color = SoltarAmber, modifier = Modifier.size(36.dp))
+                                Text(
+                                    text = "Preparando la siguiente pregunta...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    } else if (ritualInterview.isComplete) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = SoltarAmber.copy(alpha = 0.15f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = "Carta Final de Cierre Sintetizada",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = SoltarAmber,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            if (isEditingLetter) {
+                                OutlinedTextField(
+                                    value = editedLetterText,
+                                    onValueChange = { editedLetterText = it },
+                                    label = { Text("Edita tu carta antes de sellarla") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 8,
+                                    maxLines = 14
+                                )
+                            } else {
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                                    border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.4f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = editedLetterText.ifBlank { ritualInterview.finalLetter },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextPrimary,
+                                        lineHeight = 22.sp,
+                                        modifier = Modifier.padding(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        val currentQuestion = ritualInterview.currentQuestion
+                        if (currentQuestion != null) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (ritualInterview.history.isNotEmpty()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = SoltarSurfaceElevated,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "Retomando donde lo dejaste (pregunta ${ritualInterview.history.size + 1})...",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = SoltarAmber.copy(alpha = 0.15f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(14.dp))
+                                        val categoryDisplay = currentQuestion.category.replace("_", " ").lowercase()
+                                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+                                        Text(
+                                            text = "Pregunta ${ritualInterview.history.size + 1}${if (categoryDisplay.isNotBlank()) " • $categoryDisplay" else ""}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = SoltarAmber,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = currentQuestion.questionText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 24.sp
+                                )
+
+                                if (currentQuestion.questionType == "SI_NO") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { viewModel.answerRitualQuestion("Sí") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text("Sí", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        }
+                                        OutlinedButton(
+                                            onClick = { viewModel.answerRitualQuestion("No") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text("No", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                } else {
+                                    OutlinedTextField(
+                                        value = openAnswerInput,
+                                        onValueChange = { openAnswerInput = it },
+                                        placeholder = { Text("Escribe tu respuesta con total libertad y honestidad...") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        minLines = 3,
+                                        maxLines = 6,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    Button(
+                                        onClick = {
+                                            val ans = openAnswerInput.trim()
+                                            if (ans.isNotBlank()) {
+                                                openAnswerInput = ""
+                                                viewModel.answerRitualQuestion(ans)
+                                            }
+                                        },
+                                        enabled = openAnswerInput.isNotBlank(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("Continuar", color = SoltarBackground, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                if (ritualInterview.history.isNotEmpty()) {
+                                    TextButton(
+                                        onClick = {
+                                            openAnswerInput = ""
+                                            viewModel.discardRitualInterviewProgress()
+                                            viewModel.openRitualInterview()
+                                        },
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    ) {
+                                        Text("Empezar de nuevo", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (isUnlocked && ritualInterview.isComplete) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!isEditingLetter) {
+                        OutlinedButton(
+                            onClick = { isEditingLetter = true },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Editar antes de guardar", color = TextPrimary)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { isEditingLetter = false },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Vista previa", color = TextPrimary)
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            val contentToSave = if (editedLetterText.isNotBlank()) editedLetterText else ritualInterview.finalLetter
+                            viewModel.saveFinalLetterAsClosedLetter(contentToSave)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Guardar como carta cerrada", color = SoltarBackground, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else if (!isUnlocked) {
+                Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber)) {
+                    Text("Entendido", color = SoltarBackground, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun LegacyClosingRitualStepsFallback(
+    generatedSteps: List<com.example.ai.ClosingRitualStepAi>,
+    step: Int,
+    totalSteps: Int,
+    framework: SoltarFramework
+) {
+    val currentStepData = generatedSteps.getOrNull(step)
+    if (currentStepData != null) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = SoltarAmber.copy(alpha = 0.15f),
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(14.dp))
+                Text(
+                    text = "Paso ${step + 1} de $totalSteps • ${currentStepData.phaseName}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SoltarAmber,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Text(
+            text = currentStepData.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = currentStepData.guidance,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            lineHeight = 22.sp
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Card(
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+            border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.4f))
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "DECLARACIÓN Y COMPROMISO:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SoltarAmber,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = currentStepData.reflectionPrompt,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextPrimary,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    } else {
+        when (framework) {
+            SoltarFramework.ESTOICO -> {
+                when (step) {
+                    0 -> StepContent("Paso 1: Dicotomía de Control", "Reconoce con absoluta claridad qué dependía de ti en la relación y qué era completamente ajeno a tu voluntad. Libera la carga de lo que no pudiste gobernar.")
+                    1 -> StepContent("Paso 2: Amor Fati (Aceptar el destino)", "Observa la ruptura no como una injusticia cruel, sino como el material estóico sobre el cual construirás tu fortaleza, templanza y sabiduría.")
+                    2 -> StepContent("Paso 3: Apatheia (Soberanía de pasiones)", "Examina tus impulsos de búsqueda o nostalgia. Detente a sentir la emoción sin otorgarle el poder de dictar tus acciones.")
+                    3 -> StepContent("Paso 4: La Ciudadela Interior", "Sella el ritual reafirmando que tu paz mental y tu dignidad son tu posesión más valiosa y nadie puede arrebatártelas.")
+                }
+            }
+            SoltarFramework.PSICOLOGIA_MODERNA -> {
+                when (step) {
+                    0 -> StepContent("Paso 1: Procesamiento Emocional del Duelo", "Permítete sentir la tristeza y la abstinencia del apego sin juzgarte. Valida que el dolor es el trabajo biológico de reorganización cerebral.")
+                    1 -> StepContent("Paso 2: Regulación del Sistema Nervioso", "Inhala profundamente exhalando el estrés acumulado. Tu cuerpo está saliendo del estado de alerta y alarma por separación.")
+                    2 -> StepContent("Paso 3: Restructuración Cognitiva y Límites", "Identifica las narrativas idealizadas y sustitúyelas por el registro objetivo de los hechos vividos y las incompatibilidades reales.")
+                    3 -> StepContent("Paso 4: Integración e Identidad Autónoma", "Consolida tu compromiso contigo mismo/a, reconectando con tus proyectos, valores y autonomía personal.")
+                }
+            }
+            SoltarFramework.CATOLICO -> {
+                when (step) {
+                    0 -> StepContent("Paso 1: Examen de Conciencia y Entrega", "Coloca ante Dios tus cargas, tus heridas y tus expectativas no cumplidas. Entrégaselas en oración con confianza absoluta.")
+                    1 -> StepContent("Paso 2: Perdón y Liberación", "Perdona de corazón a la otra persona y perdónate a ti mismo/a, liberando todo resentimiento para que tu alma recupere la paz.")
+                    2 -> StepContent("Paso 3: Custodia del Corazón", "Decide guardar tu corazón con esperanza, sabiendo que tu dignidad como hijo/a de Dios está intacta y protegida.")
+                    3 -> StepContent("Paso 4: Renovación en el Desierto", "Acepta este tiempo de prueba como un espacio de gracia donde tu fe y tu propósito se purifican y renuevan.")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VoluntaryExitDialog(viewModel: SoltarViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var reason by remember { mutableStateOf("Proceso completado con éxito") }
+    var feedback by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cerrar mi proceso de forma voluntaria", color = UrgeAlertRed, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Lamentamos verte partir, pero respetamos profundamente tu decisión de concluir este ciclo. Por favor, ayúdanos con una encuesta 100% anónima:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Motivo principal:", style = MaterialTheme.typography.labelSmall, color = TextPrimary)
+                Spacer(modifier = Modifier.height(4.dp))
+                listOf("Proceso de duelo superado", "Prefiero herramientas offline / físicas", "Descanso digital total", "Otro motivo").forEach { opt ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { reason = opt },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = reason == opt, onClick = { reason = opt })
+                        Text(opt, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = feedback,
+                    onValueChange = { feedback = it },
+                    label = { Text("Comentarios constructivos (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    viewModel.fullDataReset()
+                    onDismiss()
+                    val uninstallIntent = Intent(Intent.ACTION_DELETE).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                    try {
+                        context.startActivity(uninstallIntent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Datos borrados. Puedes desinstalar la app desde ajustes del sistema.", Toast.LENGTH_LONG).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed)
+            ) {
+                Text("Borrar datos y desinstalar", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancelar", color = TextSecondary)
+            }
+        },
+        containerColor = SoltarSurfaceElevated,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@Composable
+fun StepContent(title: String, desc: String) {
+    Column {
+        Text(text = title, style = MaterialTheme.typography.titleMedium, color = SoltarAmber, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = desc, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, lineHeight = 22.sp)
+    }
+}

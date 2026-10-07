@@ -1,0 +1,8 @@
+{
+  "name": "Adriana ",
+  "description": "Orquestador inteligente, mentor clínico-filosófico y regulador somático autónomo para regulación emocional, contacto cero y reconstrucción de la identidad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

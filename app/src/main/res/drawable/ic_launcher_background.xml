@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Porcelain Background Gradient -->
+    <path
+        android:pathData="M0,0h512v512h-512z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="256"
+                android:centerY="215"
+                android:gradientRadius="384"
+                android:type="radial">
+                <item android:color="#FFFFFDF9" android:offset="0.0" />
+                <item android:color="#FFF4EFE8" android:offset="0.65" />
+                <item android:color="#FFE9E1D8" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Soft Ambient Red Halo -->
+    <path
+        android:fillColor="#0EB91E2B"
+        android:pathData="M256,248m-190,0a190,190 0 1,0 380,0a190,190 0 1,0 -380,0" />
+</vector>

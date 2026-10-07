@@ -1,0 +1,2432 @@
+package com.example.ui.screens
+
+import android.app.DatePickerDialog
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.audio.SoltarSoundManager
+import com.example.data.SoltarFramework
+import com.example.data.SubscriptionPlan
+import com.example.data.UserEntitlements
+import com.example.data.WisdomBank
+import com.example.ui.SoltarViewModel
+import com.example.ui.dialogs.SemanticBellAndSoundscapesDialog
+import com.example.ui.managers.ProgressManager
+import com.example.ui.components.KintsugiHeart
+import com.example.ui.components.ProgressiveLandscape
+import com.example.ui.theme.*
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TodayScreen(
+    viewModel: SoltarViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    val checkins by viewModel.checkins.collectAsState()
+    val dailySummary by viewModel.dailySummary.collectAsState()
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+
+    val vulnerabilityScore by viewModel.vulnerabilityScore.collectAsState()
+    val vulnerabilityMode = when {
+        vulnerabilityScore >= 70 -> "REFUGIO"
+        vulnerabilityScore >= 35 -> "PRESENTE"
+        else -> "EXPLORACION"
+    }
+    val relapses by viewModel.relapses.collectAsState()
+    val now = System.currentTimeMillis()
+    val hasRelapse48h = remember(relapses) {
+        relapses.any { r -> (now - r.timestamp) < (48L * 3600 * 1000) }
+    }
+    var showMoreToolsInPresent by remember { mutableStateOf(false) }
+
+    // Live clock ticker for No-Contact Counter
+    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        viewModel.evaluateJourneyStage()
+        viewModel.refreshTodayGriefPatterns()
+        while (true) {
+            delay(1000)
+            currentTime = System.currentTimeMillis()
+        }
+    }
+
+    val noContactStart = settings?.breakupDateTimestamp ?: (currentTime - (14L * 24 * 3600 * 1000))
+    val initialStartRaw = settings?.initialStartDateTimestamp ?: 0L
+    val initialStart = if (initialStartRaw > 0L) initialStartRaw else noContactStart
+    val elapsedMillis = (currentTime - noContactStart).coerceAtLeast(0L)
+    val totalAccumulatedMillis = (currentTime - initialStart).coerceAtLeast(0L)
+
+    var showSemanticBellDialog by remember { mutableStateOf(false) }
+
+    val totalSeconds = elapsedMillis / 1000
+    val days = totalSeconds / (24 * 3600)
+    val hours = (totalSeconds % (24 * 3600)) / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    val totalAccumulatedDays = totalAccumulatedMillis / (24 * 3600 * 1000)
+
+    // Milestones
+    val (milestoneTitle, nextMilestoneDays, milestoneProgress) = remember(days) {
+        when {
+            days < 1 -> Triple("Primeras 24 Horas • Anclaje", 1, (totalSeconds.toFloat() / (24 * 3600)).coerceIn(0f, 1f))
+            days < 3 -> Triple("Fase Aguda • Contención", 3, (days.toFloat() / 3f).coerceIn(0f, 1f))
+            days < 7 -> Triple("7 Días • Desintoxicación", 7, (days.toFloat() / 7f).coerceIn(0f, 1f))
+            days < 14 -> Triple("14 Días • Claridad Inicial", 14, (days.toFloat() / 14f).coerceIn(0f, 1f))
+            days < 30 -> Triple("30 Días • Reconfiguración Neural", 30, (days.toFloat() / 30f).coerceIn(0f, 1f))
+            days < 60 -> Triple("60 Días • Estabilización Emocional", 60, (days.toFloat() / 60f).coerceIn(0f, 1f))
+            days < 90 -> Triple("90 Días • Soberanía y Dignidad", 90, (days.toFloat() / 90f).coerceIn(0f, 1f))
+            else -> Triple("Reconstrucción Kintsugi • Plena Autonomía", 180, 1.0f)
+        }
+    }
+    val progressStage = remember(days, vulnerabilityScore) { ProgressManager.calculateProgressStage(days.toInt(), vulnerabilityScore) }
+
+    var isThermometerExpanded by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SoltarBackground)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)
+    ) {
+        // Journey Stage Indicator Card (Automatic Phase Detection)
+        item {
+            val currentStage = settings?.journeyStage ?: "RECOVERY"
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, if (currentStage == "LIFE_COACH") SoltarAmber.copy(alpha = 0.6f) else SoltarBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(
+                                imageVector = if (currentStage == "LIFE_COACH") Icons.Default.EmojiEvents else Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = SoltarAmber
+                            )
+                            Text(
+                                text = if (currentStage == "LIFE_COACH") "ADRIANA Life Coach" else "ADRIANA Recovery",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Surface(
+                            color = if (currentStage == "LIFE_COACH") SoltarAmber.copy(alpha = 0.2f) else SoltarSage.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = if (currentStage == "LIFE_COACH") "Crecimiento" else "Sanación",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentStage == "LIFE_COACH") SoltarAmber else SoltarSage,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = if (currentStage == "LIFE_COACH") 
+                            "Has recorrido un largo camino. Ahora trabajamos en quién quieres ser: hábitos, autoestima, propósito y disciplina diaria."
+                        else 
+                            "Acompañamiento en duelo, contacto cero, regulación emocional y reconstrucción de rutinas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+
+        // Daily Summary Insights Card (Consolidating Journal, Thoughts & Urges)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("daily_summary_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.35f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = SoltarAmber
+                            )
+                            Text(
+                                text = "Resumen Diario",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Surface(
+                            color = SoltarAmber.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Widgets,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = SoltarAmber
+                                )
+                                Text(
+                                    text = "En tu Widget",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SoltarAmber,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    // Consolidated motivational note
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = SoltarSurface,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, SoltarBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = dailySummary.briefMotivationalNote,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+
+                    // 3 Metric Pills
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = SoltarSurface,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(0.5.dp, SoltarBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "📖 ${dailySummary.journalCount}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SoltarSage
+                                )
+                                Text(
+                                    text = "Diario",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = SoltarSurface,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(0.5.dp, SoltarBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🔬 ${dailySummary.thoughtCount}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SoltarAmber
+                                )
+                                Text(
+                                    text = "Pensamientos",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = SoltarSurface,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(0.5.dp, SoltarBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🛡️ ${dailySummary.urgeCount}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SoltarAmber
+                                )
+                                Text(
+                                    text = "Impulsos",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    if (dailySummary.hasActivityToday) {
+                        Text(
+                            text = dailySummary.detailedSummaryText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    } else {
+                        Text(
+                            text = "Registra en tu diario, cuestiona un pensamiento o contiene un impulso para generar insights personalizados hoy en tu pantalla de inicio.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Quick Actions
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.openJournalModal() },
+                            modifier = Modifier.weight(1f).testTag("summary_journal_button"),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(vertical = 6.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Diario", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.toggleThoughtModal(true) },
+                            modifier = Modifier.weight(1f).testTag("summary_thought_button"),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(vertical = 6.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Psychology, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Pensar", style = MaterialTheme.typography.labelMedium)
+                        }
+                        Button(
+                            onClick = {
+                                com.example.widget.SoltarAppWidgetProvider.notifyWidgetDataChanged(context)
+                                viewModel.showNotification("Widget actualizado con tu Resumen Diario.")
+                            },
+                            modifier = Modifier.weight(1.2f).testTag("sync_widget_button"),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber.copy(alpha = 0.85f)),
+                            contentPadding = PaddingValues(vertical = 6.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Sincronizar", style = MaterialTheme.typography.labelMedium, color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Passive Difficult Days Pattern Detection Card
+        item {
+            val difficultDayAlert = remember(checkins) {
+                if (checkins.size >= 4) {
+                    val dayOfWeekPain = mutableMapOf<Int, MutableList<Float>>()
+                    checkins.forEach { c ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = c.timestamp }
+                        val dow = cal.get(Calendar.DAY_OF_WEEK)
+                        dayOfWeekPain.getOrPut(dow) { mutableListOf() }.add(c.pain)
+                    }
+                    val sundayAvg = dayOfWeekPain[Calendar.SUNDAY]?.let { if (it.isNotEmpty()) it.average() else 0.0 } ?: 0.0
+                    val overallAvg = checkins.map { c -> c.pain }.average()
+                    if (sundayAvg > (overallAvg + 0.8)) {
+                        "Patrón Histórico Detectado: Los domingos registras sistemáticamente mayor vulnerabilidad y dolor emocional. Nos anticipamos hoy para proteger tu calma."
+                    } else null
+                } else null
+            }
+
+            if (difficultDayAlert != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                    border = BorderStroke(1.dp, SoltarAmber)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Insights, contentDescription = null, tint = SoltarAmber)
+                            Text(
+                                text = "🧠 Detección Pasiva de Patrones",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = difficultDayAlert,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Beginner Letter Card Entry
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                        viewModel.toggleBeginnerLetterModal(true)
+                    },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, SoltarSage.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(SoltarSage.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = SoltarSage, modifier = Modifier.size(22.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Carta a Quien Empieza Donde Tú",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Comparte tu sabiduría o lee cartas de apoyo anónimo.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SoltarSage)
+                }
+            }
+        }
+
+        // Coach Life Dashboard (When journeyStage == "LIFE_COACH")
+        val currentStage = settings?.journeyStage ?: "RECOVERY"
+        if (currentStage == "LIFE_COACH") {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.6f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(imageVector = Icons.Default.EmojiEvents, contentDescription = null, tint = SoltarAmber)
+                            Text(
+                                text = "ADRIANA Life Coach • Tu Nuevo Propósito",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = "El duelo y el dolor han quedado atrás de forma orgánica. Esta es tu nueva etapa de autoconocimiento, autoaceptación, autoestima y propósitos personales.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                        Button(
+                            onClick = { viewModel.toggleAiCompanionSheet(true) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Psychology, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Lo Que Necesitas Ahora (Reflexión)", color = SoltarBackground, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Metas de Autonomía y Propósito (Identity Goals)
+            item {
+                val identityGoals by viewModel.identityGoals.collectAsState()
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🎯 Mis Metas de Autonomía y Crecimiento", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
+                            IconButton(onClick = {
+                                viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                viewModel.toggleIdentityGoalModal(true)
+                            }) {
+                                Icon(Icons.Default.Add, contentDescription = "Agregar meta", tint = SoltarAmber)
+                            }
+                        }
+
+                        if (identityGoals.isEmpty()) {
+                            Text("No has registrado metas de autonomía todavía. Toca el botón '+' para agregar un nuevo propósito.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                identityGoals.forEach { goal ->
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = SoltarSurfaceElevated,
+                                        border = BorderStroke(1.dp, if (goal.isCompleted) SoltarSage.copy(alpha = 0.5f) else SoltarBorder)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Checkbox(
+                                                checked = goal.isCompleted,
+                                                onCheckedChange = {
+                                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                                    viewModel.toggleGoalCompleted(goal.id, goal.isCompleted)
+                                                }
+                                            )
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = goal.goalTitle,
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    color = if (goal.isCompleted) TextSecondary else TextPrimary,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    text = "${goal.area} • ${goal.goalFrequency}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = SoltarAmber
+                                                )
+                                            }
+                                            IconButton(onClick = { viewModel.deleteIdentityGoal(goal.id) }) {
+                                                Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar", tint = TextMuted, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return@LazyColumn
+        }
+        item {
+            val realAssessment by viewModel.realVulnerabilityAssessment.collectAsState()
+            var isFactorsExpanded by remember { mutableStateOf(false) }
+
+            val mode = realAssessment.mode
+            val score = realAssessment.score
+            val themeRed = Color(0xFFEF4444)
+            val themeRedBg = Color(0xFFFEF2F2)
+            val themeGreen = Color(0xFF10B981)
+            val themeGreenBg = Color(0xFFECFDF5)
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("vulnerability_assessment_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when(mode) {
+                        "REFUGIO" -> themeRedBg
+                        "PRESENTE" -> SoltarSurfaceElevated
+                        else -> themeGreenBg
+                    }
+                ),
+                border = BorderStroke(1.dp, when(mode) {
+                    "REFUGIO" -> themeRed.copy(alpha = 0.8f)
+                    "PRESENTE" -> SoltarAmber.copy(alpha = 0.8f)
+                    else -> themeGreen.copy(alpha = 0.7f)
+                })
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .animateContentSize()
+                ) {
+                    // Header row: Mode title, icon, and score badge
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when(mode) {
+                                            "REFUGIO" -> themeRed.copy(alpha = 0.15f)
+                                            "PRESENTE" -> SoltarAmber.copy(alpha = 0.15f)
+                                            else -> themeGreen.copy(alpha = 0.15f)
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = when(mode) {
+                                        "REFUGIO" -> Icons.Default.Shield
+                                        "PRESENTE" -> Icons.Default.SelfImprovement
+                                        else -> Icons.Default.Explore
+                                    },
+                                    contentDescription = null,
+                                    tint = when(mode) {
+                                        "REFUGIO" -> themeRed
+                                        "PRESENTE" -> SoltarAmber
+                                        else -> themeGreen
+                                    },
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = when(mode) {
+                                        "REFUGIO" -> "MODO REFUGIO"
+                                        "PRESENTE" -> "MODO PRESENTE"
+                                        else -> "MODO EXPLORACIÓN"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when(mode) {
+                                        "REFUGIO" -> Color(0xFF991B1B)
+                                        "PRESENTE" -> SoltarAmber
+                                        else -> Color(0xFF065F46)
+                                    }
+                                )
+                                Text(
+                                    text = realAssessment.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        // Score Pill
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = when(mode) {
+                                "REFUGIO" -> themeRed
+                                "PRESENTE" -> SoltarAmber
+                                else -> themeGreen
+                            }
+                        ) {
+                            Text(
+                                text = "$score%",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Real Vulnerability Progress Bar
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Nivel de Vulnerabilidad Neural y Emocional",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                text = "$score de 100",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LinearProgressIndicator(
+                            progress = { score / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = when(mode) {
+                                "REFUGIO" -> themeRed
+                                "PRESENTE" -> SoltarAmber
+                                else -> themeGreen
+                            },
+                            trackColor = SoltarSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Primary Explanation grounded in user data
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = SoltarSurface.copy(alpha = 0.7f),
+                        border = BorderStroke(1.dp, SoltarBorderSubtle),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = "💡", fontSize = 14.sp)
+                            Column {
+                                Text(
+                                    text = realAssessment.primaryExplanation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextPrimary,
+                                    lineHeight = 16.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Recomendación: ${realAssessment.clinicalRecommendation}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = when(mode) {
+                                        "REFUGIO" -> themeRed
+                                        "PRESENTE" -> SoltarAmber
+                                        else -> themeGreen
+                                    },
+                                    lineHeight = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    // Check-in Call-to-Action if not logged today
+                    if (!realAssessment.hasLoggedToday) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                viewModel.openEmotionalCheckin()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = when(mode) {
+                                    "REFUGIO" -> themeRed
+                                    else -> SoltarAmber
+                                }
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("vulnerability_checkin_button"),
+                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Registrar Check-in de Hoy para Calibrar",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Expandable Factor Breakdown Toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                isFactorsExpanded = !isFactorsExpanded
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isFactorsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = SoltarAmber,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = if (isFactorsExpanded) "Ocultar desglose de cálculo" else "Ver factores activos (${realAssessment.factors.size})",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Text(
+                            text = "${realAssessment.protectiveCount} protectores • ${realAssessment.riskCount} de riesgo",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary,
+                            fontSize = 10.sp
+                        )
+                    }
+
+                    // Expanded Factors List
+                    AnimatedVisibility(visible = isFactorsExpanded) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            realAssessment.factors.forEach { factor ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (factor.isRisk) themeRedBg.copy(alpha = 0.7f) else themeGreenBg.copy(alpha = 0.7f),
+                                    border = BorderStroke(
+                                        0.5.dp,
+                                        if (factor.isRisk) themeRed.copy(alpha = 0.4f) else themeGreen.copy(alpha = 0.4f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (factor.isRisk) Icons.Default.Warning else Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = if (factor.isRisk) themeRed else themeGreen,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Column {
+                                                Text(
+                                                    text = factor.title,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (factor.isRisk) Color(0xFF991B1B) else Color(0xFF065F46)
+                                                )
+                                                Text(
+                                                    text = factor.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = TextSecondary,
+                                                    fontSize = 10.sp,
+                                                    lineHeight = 13.sp
+                                                )
+                                            }
+                                        }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = if (factor.isRisk) themeRed.copy(alpha = 0.15f) else themeGreen.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = factor.impactText,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = if (factor.isRisk) themeRed else themeGreen,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Anticipated Risk Date Proactive Banner
+        item {
+            val riskDates by viewModel.riskDates.collectAsState()
+            val triggers by viewModel.triggerEvents.collectAsState()
+            val nowCal = remember { Calendar.getInstance() }
+            val currentYr = nowCal.get(Calendar.YEAR)
+            
+            val upcomingRisk = remember(riskDates) {
+                riskDates.mapNotNull { rd ->
+                    val target = Calendar.getInstance().apply {
+                        set(Calendar.YEAR, currentYr)
+                        set(Calendar.MONTH, rd.month - 1)
+                        set(Calendar.DAY_OF_MONTH, rd.day)
+                    }
+                    if (target.timeInMillis < nowCal.timeInMillis) {
+                        target.add(Calendar.YEAR, 1)
+                    }
+                    val days = ((target.timeInMillis - nowCal.timeInMillis) / (1000L * 3600 * 24)).toInt()
+                    if (days in 0..rd.reminderDaysBefore) {
+                        Triple(rd, days, target.timeInMillis)
+                    } else null
+                }.minByOrNull { it.second }
+            }
+
+            if (upcomingRisk != null) {
+                val (rd, days, _) = upcomingRisk
+                val aiStrategy = remember(rd.id, days, triggers) {
+                    "Anticipa el detonante de la fecha y planifica con antelación actividades de desconexión digital, deporte o socialización para blindar tu soberanía hoy."
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                    border = BorderStroke(1.5.dp, SoltarAmber)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.WarningAmber, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(22.dp))
+                            Text(
+                                text = if (days == 0) "🚨 ALERTA • HOY ES ${rd.title.uppercase()}" else "🛡️ PREVENCIÓN DE RIESGO • ${rd.title.uppercase()} EN $days DÍAS",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = if (days == 0) "Hoy se cumple ${rd.title}. El riesgo de impulso es alto." else "Se acerca ${rd.title} en $days días. Nos anticipamos al momento difícil para sostener tu soberanía.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = aiStrategy,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SoltarAmber,
+                            lineHeight = 18.sp
+                        )
+
+                        if (rd.customStrategy.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Tu nota personal: ${rd.customStrategy}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SoltarSage,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            com.example.ui.components.GriefSpaceVisualization(
+                progressRatio = ProgressManager.getProgressRatio(days.toInt(), vulnerabilityScore),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                        viewModel.openEmotionalCheckin()
+                    }
+                    .testTag("today_emotional_checkin_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                border = BorderStroke(1.dp, SoltarAmber)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(SoltarAmber.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = SoltarAmber,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Check-in Emocional Rápido",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Evalúa tu nivel de ansiedad, calma y claridad para calibrar tu día y proteger tu bienestar.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Abrir check-in emocional",
+                        tint = SoltarAmber,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+
+        if (vulnerabilityMode != "REFUGIO") {
+            item {
+                val settings by viewModel.settings.collectAsState()
+                val recommendation = remember(settings) {
+                    com.example.ai.ContextualExperienceEngine.analyzeContext(settings)
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("contextual_recommendation_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = SoltarAmber,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = recommendation.profileTypeDescription,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = SoltarAmber.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "Recomendado",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SoltarAmber,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = recommendation.bannerMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            lineHeight = 18.sp
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = SoltarSurfaceElevated,
+                            border = BorderStroke(1.dp, SoltarBorderSubtle),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.openPriorityTool(recommendation.priorityToolTitle)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = recommendation.priorityToolTitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SoltarAmber
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = recommendation.priorityToolDescription,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextPrimary,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = null,
+                                    tint = SoltarAmber,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            val wisdomCard = uiState.currentWisdomCard ?: WisdomBank.getRandomCard(uiState.preferredFramework, emptyList())
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("wisdom_compass_card"),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, SoltarBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("✨", fontSize = 14.sp)
+                            Text(
+                                text = wisdomCard.title,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = {
+                                    val uri = generateShareableCardBitmap(
+                                        context = context,
+                                        title = "Sabiduría ADRIANA",
+                                        subtitle = wisdomCard.title,
+                                        quote = "«${wisdomCard.quote}»\n— ${wisdomCard.author}",
+                                        streakText = "ADRIANA • Enfoque ${uiState.preferredFramework.title}"
+                                    )
+                                    if (uri != null) {
+                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                            type = "image/png"
+                                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir sabiduría ADRIANA"))
+                                    } else {
+                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(android.content.Intent.EXTRA_TEXT, "«${wisdomCard.quote}» — ${wisdomCard.author} (ADRIANA App)")
+                                        }
+                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir sabiduría"))
+                                    }
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Compartir sabiduría",
+                                    tint = SoltarAmber,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    viewModel.rotateWisdomCard(uiState.preferredFramework)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Rotar sabiduría",
+                                    tint = SoltarAmber,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = wisdomCard.quote,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        lineHeight = 22.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "— ${wisdomCard.author}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(color = SoltarBorderSubtle)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = wisdomCard.reflection,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        // --- BOTÓN SOS (SIEMPRE VISIBLE) ---
+        item {
+            Button(
+                onClick = {
+                    viewModel.playSound(SoltarSoundManager.SoundType.URGE_ALERT)
+                    viewModel.openUrgeSheet()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .testTag("sos_button"),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed)
+            ) {
+                Text("MODO IMPULSO / SOS", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        }
+
+        // 2. HERO FEATURE: No-Contact Counter (Siempre visible en todos los modos)
+        item {
+            val isRefugio = vulnerabilityMode == "REFUGIO"
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("no_contact_hero_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                border = BorderStroke(1.5.dp, Brush.horizontalGradient(listOf(SoltarBorder, SoltarAmber.copy(alpha = 0.6f), SoltarBorder)))
+            ) {
+                Column(
+                    modifier = Modifier.padding(if (isRefugio) 14.dp else 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SoltarAmber.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                text = milestoneTitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoltarAmber,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                val calendar = Calendar.getInstance().apply { timeInMillis = noContactStart }
+                                DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        val selectedCal = Calendar.getInstance().apply { set(y, m, d, 0, 0, 0) }
+                                        viewModel.updateNoContactStartDate(selectedCal.timeInMillis)
+                                    },
+                                    calendar.get(Calendar.YEAR),
+                                    calendar.get(Calendar.MONTH),
+                                    calendar.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, contentDescription = "Ajustar fecha", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(if (isRefugio) 8.dp else 16.dp))
+
+                    Text(
+                        text = "DÍAS DE CONTACTO CERO",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary,
+                        letterSpacing = 1.2.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    val lastRelapseTimestamp = remember(relapses) {
+                        relapses.maxByOrNull { it.timestamp }?.timestamp ?: 0L
+                    }
+                    val daysSinceLastRelapse = if (lastRelapseTimestamp > 0L) {
+                        ((currentTime - lastRelapseTimestamp).coerceAtLeast(0L)) / (24 * 3600 * 1000)
+                    } else {
+                        -1L
+                    }
+
+                    Text(
+                        text = if (daysSinceLastRelapse >= 0L)
+                            "$days días de contacto cero • $daysSinceLastRelapse días desde la última recaída"
+                        else
+                            "$days días de contacto cero (Sin recaídas registradas)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Counter Grid (Days, Hours, Min, Sec)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CounterUnit(value = "$days", label = "DÍAS", highlight = true)
+                        Text(":", color = SoltarAmber, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        CounterUnit(value = String.format("%02d", hours), label = "HORAS")
+                        Text(":", color = SoltarBorder, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        CounterUnit(value = String.format("%02d", minutes), label = "MIN")
+                        Text(":", color = SoltarBorder, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        CounterUnit(value = String.format("%02d", seconds), label = "SEG")
+                    }
+
+                    if (!isRefugio) {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Progress to next milestone
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Objetivo: $nextMilestoneDays días", style = MaterialTheme.typography.labelSmall, color = TextMuted, fontSize = 11.sp)
+                                Text("${(milestoneProgress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = SoltarAmber, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LinearProgressIndicator(
+                                progress = { milestoneProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = SoltarAmber,
+                                trackColor = SoltarSurface
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Actions (Solo registrar recaída, el botón SOS ya está fuera)
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                viewModel.toggleRelapseModal(true)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .testTag("relapse_modal_trigger_button"),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, UrgeAlertRed.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = UrgeAlertRed)
+                        ) {
+                            Text("Registrar recaída", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Quick Journal Access
+        if (vulnerabilityMode != "REFUGIO") {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.openJournalModal()
+                        }
+                        .testTag("journal_quick_access_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(SoltarAmber.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = null,
+                                tint = SoltarAmber,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "DIARIO PERSONAL & MENTORÍA",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = "Registra tus pensamientos y recibe sabiduría reflexiva",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Semantic Bell & Calm Soundscapes (Public Feature)
+        if (vulnerabilityMode != "REFUGIO") {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            showSemanticBellDialog = true
+                        }
+                        .testTag("semantic_bell_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(SoltarAmber.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SelfImprovement,
+                                contentDescription = null,
+                                tint = SoltarAmber,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "CAMPANA & PAISAJES DE CALMA",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SoltarAmber,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                            Text(
+                                text = "Regulación auditiva 528Hz y entornos sonoros inmersivos",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Core Question: "¿Cómo estás ahora?"
+        if (vulnerabilityMode != "REFUGIO") {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("feeling_state_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, SoltarBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val todayPatterns by viewModel.todayGriefPatterns.collectAsState()
+
+                    if (todayPatterns.isNotEmpty()) {
+                        Text(
+                            text = "Hoy tu escritura refleja algo de:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState())
+                        ) {
+                            val labels = mapOf(
+                                "NEGACION" to Pair("Negación", Icons.Default.Cloud),
+                                "IRA" to Pair("Ira", Icons.Default.LocalFireDepartment),
+                                "NEGOCIACION" to Pair("Negociación", Icons.Default.Sync),
+                                "TRISTEZA" to Pair("Tristeza", Icons.Default.WaterDrop),
+                                "ACEPTACION" to Pair("Aceptación", Icons.Default.WbSunny)
+                            )
+                            todayPatterns.forEach { pattern ->
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = SoltarAmber.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, SoltarAmber.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        val info = labels[pattern]
+                                        if (info != null) {
+                                            Icon(
+                                                imageVector = info.second,
+                                                contentDescription = null,
+                                                tint = SoltarAmber,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = info.first,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SoltarAmber
+                                            )
+                                        } else {
+                                            Text(
+                                                text = pattern,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SoltarAmber
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Text(
+                        text = "¿CÓMO ESTÁS EN ESTE MOMENTO?",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Elige tu estado para recibir la intervención precisa:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val feelings = listOf(
+                        Pair("Ansiedad / Ganas de escribir", Icons.Default.Bolt),
+                        Pair("Mente en bucle", Icons.Default.Psychology),
+                        Pair("Nostalgia / Idealización", Icons.Default.Visibility),
+                        Pair("Confusión / Culpabilidad", Icons.Default.Balance),
+                        Pair("En calma / Reconstrucción", Icons.Default.Spa)
+                    )
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(feelings) { (feeling, iconVec) ->
+                            val isSelected = uiState.selectedFeeling == feeling
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.setSelectedFeeling(if (isSelected) "" else feeling)
+                                },
+                                label = { Text(feeling, fontSize = 12.sp) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = iconVec,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SoltarAmber,
+                                    selectedLabelColor = SoltarBackground,
+                                    containerColor = SoltarSurfaceElevated,
+                                    labelColor = TextPrimary
+                                )
+                            )
+                        }
+                    }
+
+                    // Dynamic Intervention Card
+                    AnimatedVisibility(
+                        visible = uiState.selectedFeeling.isNotBlank(),
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        when (uiState.selectedFeeling) {
+                            "Ansiedad / Ganas de escribir" -> InterventionBanner(
+                                title = "Protocolo de Urgencia Somática",
+                                description = "Tu cuerpo tiene un pico de dopamina. No actúes ahora. Inicia el protocolo de 20 minutos.",
+                                ctaText = "Abrir Modo Impulso (20 min)",
+                                icon = Icons.Default.Bolt,
+                                accentColor = UrgeAlertRed,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.URGE_ALERT)
+                                    viewModel.openUrgeSheet()
+                                }
+                            )
+                            "Mente en bucle" -> InterventionBanner(
+                                title = "Desarmar Pensamientos Intrusivos",
+                                description = "Separa hechos objetivos de interpretaciones catastróficas con el laboratorio TCC.",
+                                ctaText = "Abrir Laboratorio de Pensamiento",
+                                icon = Icons.Default.Psychology,
+                                accentColor = SoltarAmber,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.toggleThoughtModal(true)
+                                }
+                            )
+                            "Nostalgia / Idealización" -> InterventionBanner(
+                                title = "Antídoto de Realidad",
+                                description = "Tu memoria borra lo malo y amplifica lo bueno. Revisa el contraste de realidad.",
+                                ctaText = "Ver Antídoto de Idealización",
+                                icon = Icons.Default.Visibility,
+                                accentColor = SoltarTerracotta,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.toggleIdealizationModal(true)
+                                }
+                            )
+                            "Confusión / Culpabilidad" -> InterventionBanner(
+                                title = "Auditoría de 3 Responsabilidades",
+                                description = "Ni toda la culpa es tuya, ni la otra persona es un monstruo. Claridad y ecuanimidad.",
+                                ctaText = "Auditar la Relación",
+                                icon = Icons.Default.Balance,
+                                accentColor = SoltarSage,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.toggleAuditModal(true)
+                                }
+                            )
+                            "En calma / Reconstrucción" -> InterventionBanner(
+                                title = "Reconectar con tu Autonomía",
+                                description = "Aprovecha la serenidad para avanzar en tus metas de identidad y proyectos personales.",
+                                ctaText = "Ver Metas de Identidad",
+                                icon = Icons.Default.Flag,
+                                accentColor = SoltarSage,
+                                onClick = {
+                                    viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                                    viewModel.toggleIdentityGoalModal(true)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
+
+            val pinnedIds = remember(settings?.pinnedToolIds) {
+                settings?.pinnedToolIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.toggleToolsShelfSheetVisible(true) },
+                shape = RoundedCornerShape(14.dp),
+                color = SoltarSurface,
+                border = BorderStroke(1.dp, SoltarBorder)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.GridView, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = if (pinnedIds.isEmpty()) "Mis Herramientas" else "Mis Herramientas (${pinnedIds.size} fijadas)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+
+        // 4. THREE TOOL FAMILIES
+        item {
+            Text(
+                text = "HERRAMIENTAS DE PRECISIÓN",
+                style = MaterialTheme.typography.labelMedium,
+                color = SoltarAmber,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+        }
+
+        // Family A: Cuando quiero contactar
+        item {
+            ToolFamilyCard(
+                familyBadge = "PROTECCIÓN DE DIGNIDAD",
+                familyTitle = "Cuando quiero contactar",
+                accentColor = UrgeAlertRed,
+                tools = listOf(
+                    ToolItem(
+                        title = "Modo Impulso (20 min)",
+                        subtitle = "Protocolo somático guiado en 6 fases",
+                        icon = Icons.Default.Bolt,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.URGE_ALERT)
+                            viewModel.openUrgeSheet()
+                        }
+                    ),
+                    ToolItem(
+                        title = "Antídoto de Idealización",
+                        subtitle = "Contraste entre lo que extrañas y la realidad",
+                        icon = Icons.Default.Visibility,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleIdealizationModal(true)
+                        }
+                    ),
+                    ToolItem(
+                        title = "Carta Privada Sellada",
+                        subtitle = "Escribe todo sin enviarlo y haz la ceremonia",
+                        icon = Icons.Default.MailOutline,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleLetterModal(true)
+                        }
+                    ),
+                    ToolItem(
+                        title = "Simulacro de Encuentro",
+                        subtitle = "Practica conversaciones y límites",
+                        icon = Icons.Default.People,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleEncounterSimulator(true)
+                        }
+                    ),
+                    ToolItem(
+                        title = "Cápsula del Tiempo",
+                        subtitle = "Carta al yo futuro con fecha de desbloqueo",
+                        icon = Icons.Default.HourglassBottom,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleTimeCapsuleModal(true)
+                        }
+                    ),
+                    ToolItem(
+                        title = "Estimulación Bilateral EMDR",
+                        subtitle = "Saturación cognitiva y desensibilización visual",
+                        icon = Icons.Default.Visibility,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.openEmdrSession(nombreEx = settings?.exPartnerName?.takeIf { it.isNotBlank() } ?: settings?.exName ?: "")
+                        }
+                    )
+                )
+            )
+        }
+
+        // Family B: Cuando doy vueltas
+        item {
+            ToolFamilyCard(
+                familyBadge = "REGULACIÓN COGNITIVA",
+                familyTitle = "Cuando doy vueltas a la cabeza",
+                accentColor = SoltarAmber,
+                tools = listOf(
+                    ToolItem(
+                        title = "Laboratorio de Pensamientos",
+                        subtitle = "Hechos vs Interpretaciones (TCC)",
+                        icon = Icons.Default.Psychology,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleThoughtModal(true)
+                        }
+                    ),
+                    ToolItem(
+                        title = "No quiero pensar más",
+                        subtitle = "Anclaje sensorial 5-4-3-2-1 y respiración",
+                        icon = Icons.Default.Air,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.CALM_BELL)
+                            viewModel.openNoThinkingSheet()
+                        }
+                    ),
+                    ToolItem(
+                        title = "Auditoría de la Relación",
+                        subtitle = "Ecuanimidad en 3 columnas de responsabilidad",
+                        icon = Icons.Default.Balance,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleAuditModal(true)
+                        }
+                    )
+                )
+            )
+        }
+
+        // Family C: Cuando estoy en calma
+        item {
+            ToolFamilyCard(
+                familyBadge = "RECONSTRUCCIÓN PERSONAL",
+                familyTitle = "Cuando estoy en calma",
+                accentColor = SoltarSage,
+                tools = listOf(
+                    ToolItem(
+                        title = "Diario Personal & Mentoría",
+                        subtitle = "Escribe tus pensamientos y recibe guía estoica y clínica",
+                        icon = Icons.Default.AutoAwesome,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.openJournalModal()
+                        }
+                    ),
+                    ToolItem(
+                        title = "Metas de Identidad y Valores",
+                        subtitle = "Quién elijo ser hoy y mis límites",
+                        icon = Icons.Default.Flag,
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.toggleIdentityGoalModal(true)
+                        }
+                    )
+                )
+            )
+        }
+
+        // 5. 3 Focos Diarios (Cuerpo, Proyecto, Red)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("three_focuses_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, SoltarBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "LOS 3 FOCOS DEL DÍA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SoltarAmber,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Acciones simples para devolver la energía a tu propia vida:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    FocusActionRow(
+                        title = "1. Mi Cuerpo",
+                        value = uiState.focusBodyInput,
+                        onValueChange = { viewModel.setFocusBodyInput(it) },
+                        placeholder = "Ej. Caminar 20 min sin mirar el móvil",
+                        accent = SoltarAmber,
+                        isDone = uiState.focusBodyDoneInput,
+                        onDoneChange = { viewModel.setFocusBodyDone(it) },
+                        onSuggestClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.suggestExerciseFor(com.example.data.ExerciseCategory.CUERPO)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    FocusActionRow(
+                        title = "2. Mi Proyecto Propio",
+                        value = uiState.focusSelfInput,
+                        onValueChange = { viewModel.setFocusSelfInput(it) },
+                        placeholder = "Ej. Avanzar 30 min en mi estudio o trabajo",
+                        accent = SoltarSage,
+                        isDone = uiState.focusSelfDoneInput,
+                        onDoneChange = { viewModel.setFocusSelfDone(it) },
+                        onSuggestClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.suggestExerciseFor(com.example.data.ExerciseCategory.PROYECTO_PROPIO)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    FocusActionRow(
+                        title = "3. Mi Red Social",
+                        value = uiState.focusSocialInput,
+                        onValueChange = { viewModel.setFocusSocialInput(it) },
+                        placeholder = "Ej. Enviar un audio a un amigo de confianza",
+                        accent = SoltarBlue,
+                        isDone = uiState.focusSocialDoneInput,
+                        onDoneChange = { viewModel.setFocusSocialDone(it) },
+                        onSuggestClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.suggestExerciseFor(com.example.data.ExerciseCategory.RED_SOCIAL)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            viewModel.saveTodayCheckin()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SoltarSurfaceElevated),
+                        border = BorderStroke(1.dp, SoltarBorder)
+                    ) {
+                        Text("Guardar Focos del Día", color = SoltarAmber, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        // Support Hub (B1, B2, B3, B5)
+        item {
+            com.example.ui.components.SupportHubComponent(viewModel = viewModel)
+        }
+
+        // 6. Termómetro Emocional Diario (Colapsable / Limpio)
+        item {
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize()
+                    .testTag("thermometer_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+                border = BorderStroke(1.dp, SoltarBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isThermometerExpanded = !isThermometerExpanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "TERMÓMETRO EMOCIONAL DIARIO",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = if (isThermometerExpanded) "Toca para plegar" else "Califica tus 5 dimensiones hoy",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+
+                        IconButton(onClick = { isThermometerExpanded = !isThermometerExpanded }) {
+                            Icon(
+                                imageVector = if (isThermometerExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = SoltarAmber
+                            )
+                        }
+                    }
+
+                    if (isThermometerExpanded) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        SliderMetricRow(label = "Dolor / Desamor", value = uiState.todayPain, onValueChange = { viewModel.setMetricPain(it) }, color = UrgeAlertRed)
+                        SliderMetricRow(label = "Ansiedad", value = uiState.todayAnxiety, onValueChange = { viewModel.setMetricAnxiety(it) }, color = SoltarTerracotta)
+                        SliderMetricRow(label = "Nostalgia", value = uiState.todayNostalgia, onValueChange = { viewModel.setMetricNostalgia(it) }, color = SoltarAmber)
+                        SliderMetricRow(label = "Impulso de contactar", value = uiState.todayUrgeToContact, onValueChange = { viewModel.setMetricUrge(it) }, color = UrgeAlertRed)
+                        SliderMetricRow(label = "Sensación de Autonomía", value = uiState.todayAutonomy, onValueChange = { viewModel.setMetricAutonomy(it) }, color = SoltarSage)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.playSound(SoltarSoundManager.SoundType.CALM_BELL)
+                                viewModel.saveTodayCheckin()
+                            },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber)
+                        ) {
+                            Text("Guardar Evaluación Emocional", color = SoltarBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (uiState.isToolsShelfSheetVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.toggleToolsShelfSheetVisible(false) },
+            containerColor = SoltarSurface
+        ) {
+            val pinnedIdsSheet = remember(settings?.pinnedToolIds) {
+                settings?.pinnedToolIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            }
+            com.example.ui.components.ToolsShelf(
+                allTools = listOf(
+                    com.example.ui.components.ToolItem("journal", "Diario", Icons.Default.Book) { viewModel.toggleToolsShelfSheetVisible(false); viewModel.openJournalModal() },
+                    com.example.ui.components.ToolItem("unsent_letter", "Carta no enviada", Icons.Default.Mail) { viewModel.toggleLetterModal(true) },
+                    com.example.ui.components.ToolItem("time_capsule", "Cápsula del tiempo", Icons.Default.Schedule) { viewModel.toggleTimeCapsuleModal(true) },
+                    com.example.ui.components.ToolItem("wisdom", "Biblioteca de sabiduría", Icons.Default.MenuBook) { viewModel.toggleWisdomLibraryDialog(true) },
+                    com.example.ui.components.ToolItem("support_contacts", "Contactos de apoyo", Icons.Default.ContactPhone) { viewModel.openSupportContactDialog(1) },
+                    com.example.ui.components.ToolItem("encounter_simulator", "Simulador de encuentro", Icons.Default.TheaterComedy) { viewModel.toggleEncounterSimulator(true) },
+                    com.example.ui.components.ToolItem("identity_goals", "Metas de identidad", Icons.Default.Flag) { viewModel.toggleIdentityGoalModal(true) },
+                    com.example.ui.components.ToolItem("emdr_visual", "EMDR Visual", Icons.Default.Visibility) { viewModel.toggleToolsShelfSheetVisible(false); viewModel.openEmdrSession(nombreEx = settings?.exPartnerName?.takeIf { it.isNotBlank() } ?: settings?.exName ?: "") }
+                ),
+                pinnedIds = pinnedIdsSheet,
+                expanded = true, // dentro de la hoja modal, mostrar todo desplegado - ya no hace falta colapsar, el usuario abrio la hoja a proposito
+                onToggleExpanded = { },
+                onTogglePinned = { viewModel.toggleToolPinned(it) },
+                modifier = Modifier.padding(20.dp)
+            )
+        }
+    }
+
+    if (showSemanticBellDialog) {
+        SemanticBellAndSoundscapesDialog(
+            viewModel = viewModel,
+            onDismiss = { showSemanticBellDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun CounterUnit(
+    value: String,
+    label: String,
+    highlight: Boolean = false
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (highlight) SoltarAmber.copy(alpha = 0.15f) else SoltarSurface,
+            border = BorderStroke(1.5.dp, if (highlight) SoltarAmber else SoltarBorderSubtle)
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (highlight) SoltarAmber else TextPrimary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                fontSize = 32.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+private fun InterventionBanner(
+    title: String,
+    description: String,
+    ctaText: String,
+    icon: ImageVector,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = accentColor.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+                Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(description, style = MaterialTheme.typography.bodySmall, color = TextSecondary, lineHeight = 18.sp)
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth().height(38.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+            ) {
+                Text(ctaText, color = SoltarBackground, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+data class ToolItem(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit
+)
+
+@Composable
+private fun ToolFamilyCard(
+    familyBadge: String,
+    familyTitle: String,
+    accentColor: Color,
+    tools: List<ToolItem>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SoltarSurface),
+        border = BorderStroke(1.dp, SoltarBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(accentColor)
+                )
+                Text(
+                    text = familyBadge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accentColor,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = familyTitle,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tools.forEach { tool ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { tool.onClick() },
+                        shape = RoundedCornerShape(10.dp),
+                        color = SoltarSurfaceElevated,
+                        border = BorderStroke(1.dp, SoltarBorderSubtle)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = accentColor.copy(alpha = 0.15f),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(tool.icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                                }
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(tool.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                                Text(tool.subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary, fontSize = 11.sp)
+                            }
+
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusActionRow(
+    title: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    accent: Color,
+    isDone: Boolean,
+    onDoneChange: (Boolean) -> Unit,
+    onSuggestClick: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.Bold)
+            TextButton(onClick = onSuggestClick, contentPadding = PaddingValues(horizontal = 4.dp)) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = "Sugerir ejercicio", tint = accent, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Sugerir", color = accent, fontSize = 11.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text(placeholder, color = TextMuted, fontSize = 12.sp) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accent,
+                    unfocusedBorderColor = SoltarBorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Checkbox(
+                checked = isDone,
+                onCheckedChange = onDoneChange,
+                colors = CheckboxDefaults.colors(checkedColor = accent)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SliderMetricRow(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    color: Color
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+            Text("${value.toInt()} / 10", style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = 0f..10f,
+            steps = 9,
+            colors = SliderDefaults.colors(
+                thumbColor = color,
+                activeTrackColor = color,
+                inactiveTrackColor = SoltarBorder
+            )
+        )
+    }
+}

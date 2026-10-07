@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <!-- Header Row: Title + Framework & Phase Badges -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:contentDescription="Título de la aplicación Recuerda"
+            android:text="Recuerda"
+            android:textColor="@color/soltar_amber"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_framework_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/widget_action_button_bg"
+            android:contentDescription="Marco de referencia de psicología activo"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:text="🧠 Psicología"
+            android:textColor="@color/soltar_amber"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_phase_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@color/soltar_surface_elevated"
+            android:contentDescription="Fase de soberanía actual"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:text="🛡️ Soberanía"
+            android:textColor="@color/soltar_sage"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Days Counter Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_kintsugi_heart"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginEnd="0dp"
+            android:visibility="gone"
+            android:contentDescription="Corazón Kintsugi que representa tu etapa de sanación"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/widget_days_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="Número de días de contacto cero"
+            android:text="14"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_days_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Etiqueta de días de contacto cero"
+                android:text="DÍAS DE CONTACTO CERO"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_days_subtext"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Subtexto motivacional de protección de paz"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Cuidando tu dignidad y paz"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Quote / Daily Reflection Tailored to Framework / Daily Summary Note -->
+    <TextView
+        android:id="@+id/widget_quote_text"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
+        android:layout_weight="1"
+        android:contentDescription="Reflexión diaria o resumen motivacional del día"
+        android:ellipsize="end"
+        android:maxLines="3"
+        android:text="«Sé dueño de tus decisiones y custodio de tu paz hoy.»"
+        android:textColor="@color/text_secondary"
+        android:textSize="12.5sp"
+        android:textStyle="bold|italic" />
+
+    <!-- 4 Functional Action Buttons Grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- 1. SOS Button -->
+        <Button
+            android:id="@+id/widget_btn_sos"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_sos_button_bg"
+            android:contentDescription="Abrir modo de gestión de impulsos"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="🚨 SOS"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- 2. Personal Journal Button -->
+        <Button
+            android:id="@+id/widget_btn_journal"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_action_button_bg"
+            android:contentDescription="Abrir diario personal"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="📖 Diario"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- 3. Check-in Button -->
+        <Button
+            android:id="@+id/widget_btn_checkin"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_action_button_bg"
+            android:contentDescription="Realizar check-in emocional diario"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:text="✨ Check-in"
+            android:textColor="@color/soltar_sage"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>
