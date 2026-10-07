@@ -193,7 +193,7 @@ class MainActivity : FragmentActivity() {
                         kotlinx.coroutines.delay(2400)
                         showIntroAnimation = false
                     }
-                    com.example.ui.components.AdrianaIntroScreen(
+                    com.example.ui.components.SoltarIntroScreen(
                         onAnimationFinished = { showIntroAnimation = false },
                         onInteract = { showIntroAnimation = false },
                         modifier = Modifier.fillMaxSize()

@@ -192,7 +192,7 @@ fun PersonalJournalDialog(
                             },
                             onCopy = { textToCopy ->
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Diario Adriana", textToCopy)
+                                val clip = ClipData.newPlainText("Diario SOLTAR", textToCopy)
                                 clipboard.setPrimaryClip(clip)
                                 viewModel.showNotification("Copiado al portapapeles")
                             }

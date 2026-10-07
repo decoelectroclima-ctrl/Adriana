@@ -81,7 +81,7 @@ fun TermsAndConditionsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "TÉRMINOS Y CONDICIONES DE USO DE ADRIANA",
+                    text = "TÉRMINOS Y CONDICIONES DE USO DE SOLTAR",
                     style = MaterialTheme.typography.titleSmall,
                     color = SoltarAmber,
                     fontWeight = FontWeight.Bold
@@ -101,7 +101,7 @@ fun TermsAndConditionsScreen(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("1. Titularidad y Objeto", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "Titular: Javier Jiménez Fernández (adriana.app.suelta@gmail.com). ADRIANA es una aplicación móvil diseñada como herramienta de autorregulación reflexiva y acompañamiento en procesos de duelo afectivo, separación y ruptura sentimental.",
+                            text = "Titular: Javier Jiménez Fernández (adriana.app.suelta@gmail.com). SOLTAR es una aplicación móvil diseñada como herramienta de autorregulación reflexiva y acompañamiento en procesos de duelo afectivo, separación y ruptura sentimental.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary,
                             lineHeight = 18.sp
@@ -117,7 +117,7 @@ fun TermsAndConditionsScreen(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("2. Aviso Médico y Psicológico Importante", style = MaterialTheme.typography.titleSmall, color = SoltarAmber, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "ADRIANA es un asistente de inteligencia artificial y herramienta de apoyo emocional. NO es una persona real, ni un psicólogo colegiado, psiquiatra ni profesional sanitario. No emite diagnósticos médicos ni sustituye la psicoterapia clínica profesional. En caso de crisis severa, ideación autolítica o emergencia, el usuario debe contactar inmediatamente con servicios especializados de emergencia (024 en España, 112 de emergencias o 988 de prevención del suicidio).",
+                            text = "SOLTAR es una herramienta de apoyo emocional y autorregulación reflexiva. NO es una persona real, ni un psicólogo colegiado, psiquiatra ni profesional sanitario. No emite diagnósticos médicos ni sustituye la psicoterapia clínica profesional. En caso de crisis severa, ideación autolítica o emergencia, el usuario debe contactar inmediatamente con servicios especializados de emergencia (024 en España, 112 de emergencias o 988 de prevención del suicidio).",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextPrimary,
                             lineHeight = 18.sp

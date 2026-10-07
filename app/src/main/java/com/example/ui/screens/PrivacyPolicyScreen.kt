@@ -81,7 +81,7 @@ fun PrivacyPolicyScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "POLÍTICA DE PRIVACIDAD DE ADRIANA",
+                    text = "POLÍTICA DE PRIVACIDAD DE SOLTAR",
                     style = MaterialTheme.typography.titleSmall,
                     color = SoltarAmber,
                     fontWeight = FontWeight.Bold
@@ -117,7 +117,7 @@ fun PrivacyPolicyScreen(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("2. Datos Recopilados", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "ADRIANA procesa datos de carácter emocional y reflexivo introducidos voluntariamente por el usuario en su diario personal, bitácora de impulsos y registros de duelo. Estos datos incluyen notas de texto, niveles de intensidad emocional y preferencias de marcos filosóficos y psicológicos.",
+                            text = "SOLTAR procesa datos de carácter emocional y reflexivo introducidos voluntariamente por el usuario en su diario personal, bitácora de impulsos y registros de duelo. Estos datos incluyen notas de texto, niveles de intensidad emocional y preferencias de marcos filosóficos y psicológicos.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary,
                             lineHeight = 18.sp

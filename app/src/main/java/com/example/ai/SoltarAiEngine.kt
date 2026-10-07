@@ -51,7 +51,7 @@ data class SoltarUserContext(
                 parts.add("  - Propósito principal declarado: $lifeCoachFocus")
             }
         } else {
-            parts.add("• FASE ACTUAL: ADRIANA RECOVERY (Duelo y contacto cero)")
+            parts.add("• FASE ACTUAL: SOLTAR RECOVERY (Duelo y contacto cero)")
         }
         parts.add("• Días de no-contacto / racha acumulada: $streakDays días")
         if (lastCheckinMood.isNotBlank()) {

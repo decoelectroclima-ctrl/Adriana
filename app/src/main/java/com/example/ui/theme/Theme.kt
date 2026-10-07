@@ -91,11 +91,6 @@ fun SoltarTheme(
 }
 
 @Composable
-fun AdrianaTheme(content: @Composable () -> Unit) {
-  SoltarTheme(content = content)
-}
-
-@Composable
 fun AtalayaTheme(content: @Composable () -> Unit) {
   SoltarTheme(content = content)
 }

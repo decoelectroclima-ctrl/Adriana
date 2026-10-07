@@ -140,112 +140,19 @@ object SoltarNotificationHelper {
     }
 
     fun scheduleDailyReminder(context: Context, hourOfDay: Int = 21, minute: Int = 0) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
-            action = ACTION_DAILY_REMINDER
-        }
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE_DAILY_ALARM,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hourOfDay)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.timeInMillis,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.timeInMillis,
-                    pendingIntent
-                )
-            }
-        } catch (_: SecurityException) {
-            alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-        }
+        NotificationScheduler.scheduleDailyReminder(context, hourOfDay, minute)
     }
 
     fun cancelDailyReminder(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
-            action = ACTION_DAILY_REMINDER
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE_DAILY_ALARM,
-            intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-        )
-        if (pendingIntent != null) {
-            alarmManager.cancel(pendingIntent)
-        }
+        NotificationScheduler.cancelDailyReminder(context)
     }
 
     fun scheduleMandatoryJournalReminder(context: Context, hourOfDay: Int = 20, minute: Int = 0) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
-            action = ACTION_MANDATORY_JOURNAL
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE_MANDATORY_JOURNAL,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hourOfDay)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-            } else {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-            }
-        } catch (_: SecurityException) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-        }
+        NotificationScheduler.scheduleMandatoryJournalReminder(context, hourOfDay, minute)
     }
 
     fun cancelMandatoryJournalReminder(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
-            action = ACTION_MANDATORY_JOURNAL
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE_MANDATORY_JOURNAL,
-            intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-        )
-        if (pendingIntent != null) {
-            alarmManager.cancel(pendingIntent)
-        }
+        NotificationScheduler.cancelMandatoryJournalReminder(context)
     }
 
     fun sendMandatoryJournalNotification(
@@ -382,146 +289,115 @@ object SoltarNotificationHelper {
     }
 
     fun rescheduleFromSettings(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = AdrianaDatabase.getDatabase(context)
-                val settings = db.soltarSettingsDao().getSettingsOnce()
-                if (settings != null) {
-                    if (settings.notificationsEnabled) {
-                        scheduleDailyReminder(context, settings.reminderHour, settings.reminderMinute)
-                    } else {
-                        cancelDailyReminder(context)
-                    }
-
-                    // Mandatory journal reminder is always scheduled (non-disableable)
-                    scheduleMandatoryJournalReminder(context, settings.mandatoryJournalHour, settings.mandatoryJournalMinute)
-
-                    // Custom notifications
-                    if (settings.customNotificationsJson.isNotBlank()) {
-                        try {
-                            val list = json.decodeFromString<List<com.example.data.CustomNotificationItem>>(settings.customNotificationsJson)
-                            list.forEach { item ->
-                                if (item.enabled) {
-                                    scheduleCustomNotification(context, item)
-                                } else {
-                                    cancelCustomNotification(context, item.id)
-                                }
-                            }
-                        } catch (_: Exception) {}
-                    }
-                } else {
-                    scheduleDailyReminder(context, 21, 0)
-                    scheduleMandatoryJournalReminder(context, 20, 0)
-                }
-            } catch (_: Exception) {
-                scheduleDailyReminder(context, 21, 0)
-                scheduleMandatoryJournalReminder(context, 20, 0)
-            }
-        }
+        NotificationScheduler.scheduleAll(context)
     }
 
     fun checkAndTriggerScheduledReminders(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = AdrianaDatabase.getDatabase(context)
-                val settings = db.soltarSettingsDao().getSettingsOnce()
+            processDailyReminder(context)
+        }
+    }
 
-                if (settings != null && !settings.notificationsEnabled) {
-                    return@launch
-                }
+    suspend fun processDailyReminder(context: Context) {
+        try {
+            val db = AdrianaDatabase.getDatabase(context)
+            val settings = db.soltarSettingsDao().getSettingsOnce()
 
-                val framework = try {
-                    SoltarFramework.valueOf(settings?.preferredFramework ?: "PSICOLOGIA_MODERNA")
-                } catch (_: Exception) {
-                    SoltarFramework.PSICOLOGIA_MODERNA
-                }
-                val userName = settings?.userName?.ifBlank { "Viajero" } ?: "Viajero"
-
-                // 1. Check for Contact Cero Milestones
-                val breakupTimestamp = settings?.breakupDateTimestamp ?: (System.currentTimeMillis() - (14L * 24 * 3600 * 1000))
-                val elapsedMillis = (System.currentTimeMillis() - breakupTimestamp).coerceAtLeast(0L)
-                val daysElapsed = (elapsedMillis / (1000L * 3600 * 24)).toInt()
-                val lastCelebrated = settings?.lastMilestoneCelebrated ?: 0
-
-                val isMilestone = MILESTONE_DAYS.contains(daysElapsed) && daysElapsed > lastCelebrated
-
-                if (isMilestone) {
-                    sendMilestoneNotification(context, daysElapsed, framework, userName)
-                    if (settings != null) {
-                        db.soltarSettingsDao().saveSettings(settings.copy(lastMilestoneCelebrated = daysElapsed))
-                    }
-                    scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
-                    return@launch
-                }
-
-                // 1.5. Check for Anticipated Risk Dates (5-7 days before or today)
-                val riskDatesList = db.riskDateDao().getAllRiskDatesOnce()
-                val todayCal = Calendar.getInstance()
-                val currentYear = todayCal.get(Calendar.YEAR)
-                var riskDateTriggered = false
-
-                for (rd in riskDatesList) {
-                    val targetCal = Calendar.getInstance().apply {
-                        set(Calendar.YEAR, currentYear)
-                        set(Calendar.MONTH, rd.month - 1)
-                        set(Calendar.DAY_OF_MONTH, rd.day)
-                        set(Calendar.HOUR_OF_DAY, 9)
-                        set(Calendar.MINUTE, 0)
-                    }
-                    if (targetCal.timeInMillis < todayCal.timeInMillis) {
-                        targetCal.add(Calendar.YEAR, 1)
-                    }
-                    val diffMillis = targetCal.timeInMillis - todayCal.timeInMillis
-                    val daysUntil = (diffMillis / (1000L * 3600 * 24)).toInt()
-
-                    if (daysUntil in 0..rd.reminderDaysBefore) {
-                        if (rd.lastNotifiedYear != currentYear) {
-                            sendRiskDateAnticipatedNotification(context, rd, daysUntil, framework, userName)
-                            db.riskDateDao().insertRiskDate(rd.copy(lastNotifiedYear = currentYear))
-                            riskDateTriggered = true
-                            break
-                        }
-                    }
-                }
-
-                if (riskDateTriggered) {
-                    scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
-                    return@launch
-                }
-
-                // 2. Check for 3+ Days Inactivity
-                val latestCheckin = db.checkinDao().getLatestCheckin()
-                val lastInactivityNotice = settings?.lastInactivityNoticeSentTimestamp ?: 0L
-                val inactivityAlertsEnabled = settings?.inactivityAlertsEnabled ?: true
-
-                val daysSinceLastCheckin = if (latestCheckin != null) {
-                    ((System.currentTimeMillis() - latestCheckin.timestamp) / (1000L * 3600 * 24)).toInt()
-                } else {
-                    daysElapsed.coerceAtLeast(0)
-                }
-
-                val hoursSinceLastNotice = (System.currentTimeMillis() - lastInactivityNotice) / (1000L * 3600)
-
-                if (daysSinceLastCheckin >= 3 && inactivityAlertsEnabled && hoursSinceLastNotice >= 48) {
-                    sendInactivityEmpatheticNotification(context, daysSinceLastCheckin, userName, framework)
-                    if (settings != null) {
-                        db.soltarSettingsDao().saveSettings(
-                            settings.copy(lastInactivityNoticeSentTimestamp = System.currentTimeMillis())
-                        )
-                    }
-                    scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
-                    return@launch
-                }
-
-                // 3. Regular Daily Check-in & Wisdom Reminder
-                sendDailyCheckinNotification(context)
-
-                // Schedule for the next day
-                scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
-            } catch (_: Exception) {
-                sendDailyCheckinNotification(context)
-                scheduleDailyReminder(context, 21, 0)
+            if (settings != null && !settings.notificationsEnabled) {
+                return
             }
+
+            val framework = try {
+                SoltarFramework.valueOf(settings?.preferredFramework ?: "PSICOLOGIA_MODERNA")
+            } catch (_: Exception) {
+                SoltarFramework.PSICOLOGIA_MODERNA
+            }
+            val userName = settings?.userName?.ifBlank { "Viajero" } ?: "Viajero"
+
+            // 1. Check for Contact Cero Milestones
+            val breakupTimestamp = settings?.breakupDateTimestamp ?: (System.currentTimeMillis() - (14L * 24 * 3600 * 1000))
+            val elapsedMillis = (System.currentTimeMillis() - breakupTimestamp).coerceAtLeast(0L)
+            val daysElapsed = (elapsedMillis / (1000L * 3600 * 24)).toInt()
+            val lastCelebrated = settings?.lastMilestoneCelebrated ?: 0
+
+            val isMilestone = MILESTONE_DAYS.contains(daysElapsed) && daysElapsed > lastCelebrated
+
+            if (isMilestone) {
+                sendMilestoneNotification(context, daysElapsed, framework, userName)
+                if (settings != null) {
+                    db.soltarSettingsDao().saveSettings(settings.copy(lastMilestoneCelebrated = daysElapsed))
+                }
+                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
+                return
+            }
+
+            // 1.5. Check for Anticipated Risk Dates (5-7 days before or today)
+            val riskDatesList = db.riskDateDao().getAllRiskDatesOnce()
+            val todayCal = Calendar.getInstance()
+            val currentYear = todayCal.get(Calendar.YEAR)
+            var riskDateTriggered = false
+
+            for (rd in riskDatesList) {
+                val targetCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, currentYear)
+                    set(Calendar.MONTH, rd.month - 1)
+                    set(Calendar.DAY_OF_MONTH, rd.day)
+                    set(Calendar.HOUR_OF_DAY, 9)
+                    set(Calendar.MINUTE, 0)
+                }
+                if (targetCal.timeInMillis < todayCal.timeInMillis) {
+                    targetCal.add(Calendar.YEAR, 1)
+                }
+                val diffMillis = targetCal.timeInMillis - todayCal.timeInMillis
+                val daysUntil = (diffMillis / (1000L * 3600 * 24)).toInt()
+
+                if (daysUntil in 0..rd.reminderDaysBefore) {
+                    if (rd.lastNotifiedYear != currentYear) {
+                        sendRiskDateAnticipatedNotification(context, rd, daysUntil, framework, userName)
+                        db.riskDateDao().insertRiskDate(rd.copy(lastNotifiedYear = currentYear))
+                        riskDateTriggered = true
+                        break
+                    }
+                }
+            }
+
+            if (riskDateTriggered) {
+                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
+                return
+            }
+
+            // 2. Check for 3+ Days Inactivity
+            val latestCheckin = db.checkinDao().getLatestCheckin()
+            val lastInactivityNotice = settings?.lastInactivityNoticeSentTimestamp ?: 0L
+            val inactivityAlertsEnabled = settings?.inactivityAlertsEnabled ?: true
+
+            val daysSinceLastCheckin = if (latestCheckin != null) {
+                ((System.currentTimeMillis() - latestCheckin.timestamp) / (1000L * 3600 * 24)).toInt()
+            } else {
+                daysElapsed.coerceAtLeast(0)
+            }
+
+            val hoursSinceLastNotice = (System.currentTimeMillis() - lastInactivityNotice) / (1000L * 3600)
+
+            if (daysSinceLastCheckin >= 3 && inactivityAlertsEnabled && hoursSinceLastNotice >= 48) {
+                sendInactivityEmpatheticNotification(context, daysSinceLastCheckin, userName, framework)
+                if (settings != null) {
+                    db.soltarSettingsDao().saveSettings(
+                        settings.copy(lastInactivityNoticeSentTimestamp = System.currentTimeMillis())
+                    )
+                }
+                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
+                return
+            }
+
+            // 3. Regular Daily Check-in & Wisdom Reminder
+            sendDailyCheckinNotification(context)
+
+            // Re-encadena para el día siguiente (Cadena garantizada B2)
+            NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
+        } catch (_: Exception) {
+            sendDailyCheckinNotification(context)
+            NotificationScheduler.scheduleDailyReminder(context, 21, 0)
         }
     }
 
@@ -885,9 +761,9 @@ object SoltarNotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_MILESTONES)
             .setSmallIcon(R.drawable.ic_stat_soltar)
-            .setContentTitle("ADRIANA")
-            .setContentText("ADRIANA está lista para acompañarte.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("ADRIANA está lista para acompañarte."))
+            .setContentTitle("SOLTAR")
+            .setContentText("SOLTAR está lista para acompañarte.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("SOLTAR está lista para acompañarte."))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

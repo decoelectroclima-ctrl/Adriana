@@ -59,7 +59,7 @@ class OctagonShape : Shape {
 }
 
 @Composable
-fun AdrianaIntroScreen(
+fun SoltarIntroScreen(
     onAnimationFinished: () -> Unit = {},
     onInteract: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -69,7 +69,7 @@ fun AdrianaIntroScreen(
     val brandAlpha = remember { Animatable(0f) }
     val brandOffsetY = remember { Animatable(20f) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "adriana_intro_transition")
+    val infiniteTransition = rememberInfiniteTransition(label = "soltar_intro_transition")
     
     val heartbeatScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -182,7 +182,7 @@ fun AdrianaIntroScreen(
                     radius = 1200f
                 )
             )
-            .testTag("adriana_intro_screen"),
+            .testTag("soltar_intro_screen"),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -276,7 +276,7 @@ fun AdrianaIntroScreen(
                     }
             ) {
                 Text(
-                    text = "A D R I A N A",
+                    text = "S O L T A R",
                     color = textColor,
                     fontSize = 34.sp,
                     fontFamily = FontFamily.Serif,

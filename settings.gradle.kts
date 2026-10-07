@@ -31,6 +31,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ADRIANA"
+rootProject.name = "SOLTAR"
 
 include(":app")

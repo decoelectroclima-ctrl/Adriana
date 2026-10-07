@@ -82,6 +82,7 @@ fun ProfileScreen(
     var showFavoriteWisdomDialog by remember { mutableStateOf(false) }
     var exportPin by remember { mutableStateOf("1234") }
     var importPin by remember { mutableStateOf("1234") }
+    var showNotificationReliabilityDialog by remember { mutableStateOf(false) }
 
     var isGeneratingKintsugi by remember { mutableStateOf(false) }
     var kintsugiReportText by remember { mutableStateOf<String?>(null) }
@@ -331,7 +332,7 @@ fun ProfileScreen(
                         onClick = {
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Documento Kintsugi - ADRIANA")
+                                putExtra(Intent.EXTRA_SUBJECT, "Documento Kintsugi - SOLTAR")
                                 putExtra(Intent.EXTRA_TEXT, report)
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "Compartir Documento Kintsugi"))
@@ -479,6 +480,10 @@ fun ProfileScreen(
             containerColor = SoltarSurfaceElevated,
             shape = RoundedCornerShape(16.dp)
         )
+    }
+
+    if (showNotificationReliabilityDialog) {
+        NotificationReliabilityDialog(onDismiss = { showNotificationReliabilityDialog = false })
     }
 
     // Modal para Configurar Hora de Recordatorio Diario
@@ -1340,7 +1345,7 @@ fun ProfileScreen(
                             border = BorderStroke(1.dp, if (entitlements.isPremium) SoltarAmber else SoltarBorderSubtle)
                         ) {
                             Text(
-                                text = if (entitlements.isPremium) "PREMIUM ACTIVO" else "ADRIANA FREE",
+                                text = if (entitlements.isPremium) "PREMIUM ACTIVO" else "SOLTAR FREE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (entitlements.isPremium) SoltarAmber else TextSecondary,
                                 fontWeight = FontWeight.Bold,
@@ -2635,6 +2640,33 @@ fun ProfileScreen(
                                     Text("Hito (7d)", color = SoltarAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Botón B6: Asegurar mis Notificaciones (Diagnóstico y blindaje)
+                            Button(
+                                onClick = { showNotificationReliabilityDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("btn_asegurar_notificaciones"),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber.copy(alpha = 0.15f)),
+                                border = BorderStroke(1.dp, SoltarAmber)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = SoltarAmber,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "🛡️ Asegurar mis Notificaciones (Diagnóstico)",
+                                    color = SoltarAmber,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
                     }
 
@@ -3408,7 +3440,7 @@ private fun LegalAndContactSection(viewModel: SoltarViewModel) {
                 IconButton(onClick = {
                     try {
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:adriana.app.suelta@gmail.com?subject=Soporte%20Adriana")
+                            data = Uri.parse("mailto:adriana.app.suelta@gmail.com?subject=Soporte%20SOLTAR")
                         }
                         context.startActivity(intent)
                     } catch (e: Exception) {
@@ -3465,7 +3497,7 @@ private fun AnticipatedRiskDatesSection(viewModel: SoltarViewModel) {
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Nadie avisa antes de que llegue el momento difícil. Introduce fechas clave (cumpleaños del ex, aniversario, Navidad, San Valentín). Adriana te avisará 5-7 días antes con una estrategia preparada para cuidar tu serenidad y enfoque.",
+                text = "Nadie avisa antes de que llegue el momento difícil. Introduce fechas clave (cumpleaños del ex, aniversario, Navidad, San Valentín). SOLTAR te avisará 5-7 días antes con una estrategia preparada para cuidar tu serenidad y enfoque.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary,
                 fontSize = 12.sp
@@ -3553,7 +3585,7 @@ private fun AnticipatedRiskDatesSection(viewModel: SoltarViewModel) {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        "Selecciona un hito o introduce uno personalizado. Adriana se anticipará para proteger tu paz.",
+                        "Selecciona un hito o introduce uno personalizado. SOLTAR se anticipará para proteger tu paz.",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         fontSize = 12.sp

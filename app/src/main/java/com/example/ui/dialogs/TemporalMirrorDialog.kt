@@ -163,7 +163,7 @@ fun TemporalMirrorDialog(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(16.dp))
                                 Text(
-                                    text = "Análisis Lingüístico Comparativo (ADRIANA AI)",
+                                    text = "Análisis Lingüístico Comparativo (SOLTAR AI)",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = SoltarAmber,
                                     fontWeight = FontWeight.Bold

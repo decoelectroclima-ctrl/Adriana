@@ -7,7 +7,7 @@ import android.util.Log
 import java.util.Locale
 
 /**
- * TextToSpeech manager for ADRIANA's guided voice meditations and regulation practices.
+ * TextToSpeech manager for SOLTAR's guided voice meditations and regulation practices.
  * Dynamically adjusts speech cadence and pitch based on user vulnerability.
  */
 object SoltarTtsManager {

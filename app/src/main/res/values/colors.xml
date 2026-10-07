@@ -8,7 +8,7 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- Soltar / Adriana Theme Colors -->
+    <!-- Soltar Theme Colors -->
     <color name="soltar_bg">#121316</color>
     <color name="soltar_surface">#1A1C23</color>
     <color name="soltar_surface_elevated">#242731</color>

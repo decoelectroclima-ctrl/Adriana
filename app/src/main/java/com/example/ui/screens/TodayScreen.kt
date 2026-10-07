@@ -155,7 +155,7 @@ fun TodayScreen(
                                 tint = SoltarAmber
                             )
                             Text(
-                                text = if (currentStage == "LIFE_COACH") "ADRIANA Life Coach" else "ADRIANA Recovery",
+                                text = if (currentStage == "LIFE_COACH") "SOLTAR Life Coach" else "SOLTAR Recovery",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = TextPrimary,
                                 fontWeight = FontWeight.Bold
@@ -511,7 +511,7 @@ fun TodayScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(imageVector = Icons.Default.EmojiEvents, contentDescription = null, tint = SoltarAmber)
                             Text(
-                                text = "ADRIANA Life Coach • Tu Nuevo Propósito",
+                                text = "SOLTAR Life Coach • Tu Nuevo Propósito",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = TextPrimary,
                                 fontWeight = FontWeight.Bold
@@ -1261,10 +1261,10 @@ fun TodayScreen(
                                 onClick = {
                                     val uri = generateShareableCardBitmap(
                                         context = context,
-                                        title = "Sabiduría ADRIANA",
+                                        title = "Sabiduría SOLTAR",
                                         subtitle = wisdomCard.title,
                                         quote = "«${wisdomCard.quote}»\n— ${wisdomCard.author}",
-                                        streakText = "ADRIANA • Enfoque ${uiState.preferredFramework.title}"
+                                        streakText = "SOLTAR • Enfoque ${uiState.preferredFramework.title}"
                                     )
                                     if (uri != null) {
                                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -1272,11 +1272,11 @@ fun TodayScreen(
                                             putExtra(android.content.Intent.EXTRA_STREAM, uri)
                                             addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir sabiduría ADRIANA"))
+                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir sabiduría SOLTAR"))
                                     } else {
                                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(android.content.Intent.EXTRA_TEXT, "«${wisdomCard.quote}» — ${wisdomCard.author} (ADRIANA App)")
+                                            putExtra(android.content.Intent.EXTRA_TEXT, "«${wisdomCard.quote}» — ${wisdomCard.author} (SOLTAR App)")
                                         }
                                         context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir sabiduría"))
                                     }

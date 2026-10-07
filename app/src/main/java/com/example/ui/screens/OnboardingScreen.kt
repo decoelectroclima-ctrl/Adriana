@@ -33,7 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.example.audio.SoltarSoundManager
 import com.example.data.SoltarFramework
 import com.example.ui.SoltarViewModel
-import com.example.ui.components.AdrianaIntroScreen
+import com.example.ui.components.SoltarIntroScreen
 import com.example.ui.theme.*
 
 sealed class OnboardingPage {
@@ -166,7 +166,7 @@ fun OnboardingScreen(
                     ) {
                         when (page) {
                             is OnboardingPage.IntroHero -> {
-                                AdrianaIntroScreen(
+                                SoltarIntroScreen(
                                     onAnimationFinished = {
                                         if (currentStepIndex < totalSteps - 1) {
                                             viewModel.playSound(SoltarSoundManager.SoundType.TAP)

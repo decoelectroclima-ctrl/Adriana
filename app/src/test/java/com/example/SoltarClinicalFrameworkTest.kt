@@ -24,7 +24,7 @@ class SoltarClinicalFrameworkTest {
         assertNotNull(capsule)
         assertTrue(capsule.evidenceLevel.contains("Nivel 1"))
         assertTrue(capsule.psychologicalModel.isNotBlank())
-        assertTrue(capsule.adrianaProtocol.isNotBlank())
+        assertTrue(capsule.soltarProtocol.isNotBlank())
     }
 
     @Test
@@ -58,7 +58,7 @@ class SoltarClinicalFrameworkTest {
         
         // Todas comparten la misma rigoración científica subyacente y protocolos de intervención
         assertNotNull(modernCapsule.evidenceLevel)
-        assertNotNull(stoicCapsule.adrianaProtocol)
+        assertNotNull(stoicCapsule.soltarProtocol)
     }
 
     @Test

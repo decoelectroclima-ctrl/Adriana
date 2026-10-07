@@ -27,10 +27,12 @@ data class KnowledgeCapsule(
     // Atributos de la nueva Jerarquía de Conocimiento y Protocolos Recuerda
     val evidenceLevel: String = "Nivel 1: Evidencia científica consolidada (APA, Bowlby, TCC, ACT, Neff)",
     val psychologicalModel: String = "Modelo Cognitivo-Conductual y de Regulación de Apego Adulto",
-    val adrianaProtocol: String = "Problema → Detección → Contexto → Hipótesis → Intervención → Herramienta → Seguimiento",
+    val soltarProtocol: String = "Problema → Detección → Contexto → Hipótesis → Intervención → Herramienta → Seguimiento",
     val meaningLens: String = "Lente opcional de interpretación",
     val divulgationRef: String = "Referencia secundaria de divulgación"
-)
+) {
+    val adrianaProtocol: String get() = soltarProtocol
+}
 
 object ClinicalKnowledgeBase {
 
@@ -111,7 +113,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Aplica el protocolo Somático TIPP: sumerge la cara en agua fría o colócate hielo en la nuca durante 30 segundos para activar el reflejo de buceo vagal.",
             evidenceLevel = "Nivel 1: Revisiones sistemáticas en neurobiología del apego y neuroimagen del desamor (Fisher et al., 2010)",
             psychologicalModel = "Modelo Biopsicosocial del Apego y Regulación Somática del Sistema Nervioso",
-            adrianaProtocol = "Craving Relacional → Detección de alerta simpática → Contexto de abstinencia → Hipótesis química vs afectiva → Intervención TIPP → Modo Impulso → Reevaluación a 20 min",
+            soltarProtocol = "Craving Relacional → Detección de alerta simpática → Contexto de abstinencia → Hipótesis química vs afectiva → Intervención TIPP → Modo Impulso → Reevaluación a 20 min",
             meaningLens = "Lente de la Psicología Científica y Neurobiología",
             divulgationRef = "Amir Levine (Maneras de Amar)"
         ),
@@ -128,7 +130,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Silencia o bloquea notificaciones de redes para interrumpir el circuito de recompensa intermitente.",
             evidenceLevel = "Nivel 1: Psicología Experimental del Aprendizaje y Condicionamiento Operante",
             psychologicalModel = "Modelo Conductual de Refuerzo Variable y Extinción de Respuesta",
-            adrianaProtocol = "Estímulo ambiguo → Detección de craving → Contexto de refuerzo intermitente → Hipótesis de inconsistencia → Intervención de corte digital → Bloqueo/Silenciamiento → Seguimiento",
+            soltarProtocol = "Estímulo ambiguo → Detección de craving → Contexto de refuerzo intermitente → Hipótesis de inconsistencia → Intervención de corte digital → Bloqueo/Silenciamiento → Seguimiento",
             meaningLens = "Lente Conductual Científica",
             divulgationRef = "Silvia Congost (Autoestima y Dependencia)"
         ),
@@ -145,7 +147,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Elimina aplicaciones de rastreo, archiva conversaciones y guarda fotos en una carpeta oculta o disco externo inaccesible en el día a día.",
             evidenceLevel = "Nivel 1: Guías clínicas de deshabituación y manejo de duelos complicados",
             psychologicalModel = "Modelo de Regulación de Estímulos y Aceptación Contextual",
-            adrianaProtocol = "Impulso de contacto → Detección de estímulo visual → Contexto de vulnerabilidad → Hipótesis de recaída → Intervención de higiene digital → Contacto Cero Estricto o Adaptativo → Seguimiento",
+            soltarProtocol = "Impulso de contacto → Detección de estímulo visual → Contexto de vulnerabilidad → Hipótesis de recaída → Intervención de higiene digital → Contacto Cero Estricto o Adaptativo → Seguimiento",
             meaningLens = "Lente Psicoterapéutica Contemporánea",
             divulgationRef = "Silvia Congost"
         ),
@@ -162,7 +164,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Elige una acción coherente con tus valores (ej. entrenar, cocinar sano, leer) y realízala a pesar del desánimo mental.",
             evidenceLevel = "Nivel 1: Ensayos clínicos controlados de ACT en rumiación y trastornos afectivos (Hayes et al., 2013)",
             psychologicalModel = "Modelo de Flexibilidad Psicológica y Hexaflex ACT",
-            adrianaProtocol = "Pensamiento intrusivo → Detección de fusión cognitiva → Contexto de rumiación → Hipótesis de no-equivalencia pensamiento-hecho → Intervención de defusión → Laboratorio de Pensamientos → Reevaluación",
+            soltarProtocol = "Pensamiento intrusivo → Detección de fusión cognitiva → Contexto de rumiación → Hipótesis de no-equivalencia pensamiento-hecho → Intervención de defusión → Laboratorio de Pensamientos → Reevaluación",
             meaningLens = "Lente de Contextual Behavioral Science",
             divulgationRef = "Steven Hayes"
         ),
@@ -179,7 +181,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Escribe una carta de despedida honesta en tu diario personal (sin enviarla jamás) agradeciendo lo bueno y reconociendo el final definitivo.",
             evidenceLevel = "Nivel 1: Revisiones sistemáticas de psicología del duelo y adaptación (Stroebe & Schut, 1999/2010)",
             psychologicalModel = "Modelo de Proceso Dual de Afrontamiento del Duelo (Loss-Oriented & Restoration-Oriented)",
-            adrianaProtocol = "Dolor agudo → Detección de evitación o rumiación → Contexto de pérdida → Hipótesis de oscilación natural → Intervención de expresión y diario → Diario Personal → Seguimiento evolutivo",
+            soltarProtocol = "Dolor agudo → Detección de evitación o rumiación → Contexto de pérdida → Hipótesis de oscilación natural → Intervención de expresión y diario → Diario Personal → Seguimiento evolutivo",
             meaningLens = "Lente Científica del Duelo",
             divulgationRef = "Gabriel Rolón"
         ),
@@ -196,7 +198,7 @@ object ClinicalKnowledgeBase {
             concreteAction = "Sal a caminar 20 minutos bajo la luz natural del día sin audífonos ni distracciones.",
             evidenceLevel = "Nivel 1: Estudios de neuroendocrinología del estrés crónico y carga alostática",
             psychologicalModel = "Modelo Biológico del Eje Hipotalámico-Pituitario-Adrenal (HHA)",
-            adrianaProtocol = "Fatiga o hiperalerta → Detección somática → Contexto de estrés crónico → Hipótesis de sobrecarga alostática → Intervención de higiene circadiana y caminata → Check-in somático → Reevaluación",
+            soltarProtocol = "Fatiga o hiperalerta → Detección somática → Contexto de estrés crónico → Hipótesis de sobrecarga alostática → Intervención de higiene circadiana y caminata → Check-in somático → Reevaluación",
             meaningLens = "Lente Neurobiológica",
             divulgationRef = "Marian Rojas Estapé (Cómo hacer que te pasen cosas buenas)"
         ),

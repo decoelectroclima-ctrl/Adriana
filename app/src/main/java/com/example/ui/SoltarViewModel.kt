@@ -660,9 +660,9 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
             repository.saveSettings(current.copy(journeyStage = stage))
             playSound(com.example.audio.SoltarSoundManager.SoundType.WARM_CHIME)
             val msg = if (stage == "LIFE_COACH") {
-                "Has recorrido un largo camino. Ahora ADRIANA Life Coach te acompaña en quién quieres ser."
+                "Has recorrido un largo camino. Ahora SOLTAR Life Coach te acompaña en quién quieres ser."
             } else {
-                "ADRIANA Recovery activada: Enfoque en duelo, contacto cero y reconstrucción."
+                "SOLTAR Recovery activada: Enfoque en duelo, contacto cero y reconstrucción."
             }
             showNotification(msg)
         }

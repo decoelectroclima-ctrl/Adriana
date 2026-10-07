@@ -219,10 +219,10 @@ fun WisdomCardItem(
                         onClick = {
                             val uri = com.example.ui.screens.generateShareableCardBitmap(
                                 context = context,
-                                title = "Sabiduría ADRIANA",
+                                title = "Sabiduría SOLTAR",
                                 subtitle = card.title,
                                 quote = "«${card.quote}»\n— ${card.author}",
-                                streakText = "ADRIANA • ${card.framework.title}"
+                                streakText = "SOLTAR • ${card.framework.title}"
                             )
                             if (uri != null) {
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -230,11 +230,11 @@ fun WisdomCardItem(
                                     putExtra(Intent.EXTRA_STREAM, uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Compartir sabiduría ADRIANA"))
+                                context.startActivity(Intent.createChooser(shareIntent, "Compartir sabiduría SOLTAR"))
                             } else {
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "«${card.quote}» — ${card.author} (ADRIANA App)")
+                                    putExtra(Intent.EXTRA_TEXT, "«${card.quote}» — ${card.author} (SOLTAR App)")
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, "Compartir sabiduría"))
                             }

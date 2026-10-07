@@ -125,7 +125,7 @@ fun ProcessScreen(
                     onClick = {
                         val uri = generateShareableCardBitmap(
                             context = context,
-                            title = "Proceso ADRIANA",
+                            title = "Proceso SOLTAR",
                             subtitle = "Día $days de Reconstrucción",
                             quote = "“La soberanía interior se construye un día a la vez.”",
                             streakText = "Racha activa • $days días"
@@ -136,7 +136,7 @@ fun ProcessScreen(
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Compartir Tarjeta de Hito ADRIANA"))
+                            context.startActivity(Intent.createChooser(shareIntent, "Compartir Tarjeta de Hito SOLTAR"))
                         } else {
                             Toast.makeText(context, "No se pudo generar la tarjeta", Toast.LENGTH_SHORT).show()
                         }
@@ -1643,7 +1643,7 @@ fun generateShareableCardBitmap(
 
         textPaint.color = android.graphics.Color.parseColor("#F59E0B")
         textPaint.textSize = 34f
-        canvas.drawText("• ADRIANA • adriana.app", 120f, (height - 150).toFloat(), textPaint)
+        canvas.drawText("• SOLTAR • soltar.app", 120f, (height - 150).toFloat(), textPaint)
 
         val cachePath = java.io.File(context.cacheDir, "shared_card.png")
         val stream = java.io.FileOutputStream(cachePath)
