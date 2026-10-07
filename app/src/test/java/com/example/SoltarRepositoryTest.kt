@@ -17,14 +17,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class SoltarRepositoryTest {
 
-    private lateinit var database: AdrianaDatabase
+    private lateinit var database: SoltarDatabase
     private lateinit var repository: SoltarRepository
 
     @Before
     fun setup() {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
-            AdrianaDatabase::class.java
+            SoltarDatabase::class.java
         ).allowMainThreadQueries().build()
 
         repository = SoltarRepository(database)
@@ -120,8 +120,8 @@ class SoltarRepositoryTest {
 
     @Test
     fun testMigration30To31DefinesProperAlterTable() {
-        assertNotNull(AdrianaDatabase.MIGRATION_30_31)
-        assertEquals(30, AdrianaDatabase.MIGRATION_30_31.startVersion)
-        assertEquals(31, AdrianaDatabase.MIGRATION_30_31.endVersion)
+        assertNotNull(SoltarDatabase.MIGRATION_30_31)
+        assertEquals(30, SoltarDatabase.MIGRATION_30_31.startVersion)
+        assertEquals(31, SoltarDatabase.MIGRATION_30_31.endVersion)
     }
 }

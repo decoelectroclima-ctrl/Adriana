@@ -30,9 +30,7 @@ data class KnowledgeCapsule(
     val soltarProtocol: String = "Problema → Detección → Contexto → Hipótesis → Intervención → Herramienta → Seguimiento",
     val meaningLens: String = "Lente opcional de interpretación",
     val divulgationRef: String = "Referencia secundaria de divulgación"
-) {
-    val adrianaProtocol: String get() = soltarProtocol
-}
+)
 
 object ClinicalKnowledgeBase {
 

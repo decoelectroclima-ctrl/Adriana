@@ -2,7 +2,7 @@ package com.example
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarSettingsEntity
 import com.example.ui.auth.AuthViewModel
 import kotlinx.coroutines.runBlocking
@@ -28,7 +28,7 @@ class AuthViewModelTest {
         val prefs = application.getSharedPreferences("atalaya_security_prefs", android.content.Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
-        val db = AdrianaDatabase.getDatabase(application)
+        val db = SoltarDatabase.getDatabase(application)
         db.soltarSettingsDao().saveSettings(
             SoltarSettingsEntity(
                 id = 1,

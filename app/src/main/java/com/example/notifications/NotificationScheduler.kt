@@ -8,7 +8,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.CustomNotificationItem
 import com.example.widget.SoltarAppWidgetProvider
 import kotlinx.coroutines.CoroutineScope
@@ -299,7 +299,7 @@ object NotificationScheduler {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val db = AdrianaDatabase.getDatabase(context)
+                val db = SoltarDatabase.getDatabase(context)
                 val settings = db.soltarSettingsDao().getSettingsOnce()
 
                 withContext(Dispatchers.Main) {

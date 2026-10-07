@@ -3,7 +3,7 @@ package com.example.data
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AdrianaExportData(
+data class SoltarExportData(
     val version: Int = 1,
     val checkins: List<CheckinEntity>,
     val journalEntries: List<JournalEntryEntity>,

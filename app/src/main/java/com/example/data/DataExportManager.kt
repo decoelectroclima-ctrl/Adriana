@@ -1,8 +1,8 @@
 package com.example.data
 
 import android.content.Context
-import com.example.data.AdrianaDatabase
-import com.example.data.AdrianaExportData
+import com.example.data.SoltarDatabase
+import com.example.data.SoltarExportData
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -19,7 +19,7 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import java.nio.ByteBuffer
 
-class DataExportManager(private val database: AdrianaDatabase) {
+class DataExportManager(private val database: SoltarDatabase) {
     private val json = Json { ignoreUnknownKeys = true }
     private val GCM_IV_LENGTH = 12
     private val GCM_TAG_LENGTH = 128
@@ -47,7 +47,7 @@ class DataExportManager(private val database: AdrianaDatabase) {
                 userName = settings?.userName ?: "Usuario"
             )
 
-            AdrianaExportData(
+            SoltarExportData(
                 checkins = checkins,
                 journalEntries = journals,
                 unsentLetters = letters,
@@ -104,7 +104,7 @@ class DataExportManager(private val database: AdrianaDatabase) {
             cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
             val jsonData = String(cipher.doFinal(encryptedData))
             
-            val data = json.decodeFromString<AdrianaExportData>(jsonData)
+            val data = json.decodeFromString<SoltarExportData>(jsonData)
             
             runBlocking {
                 // Restore data (ensure INSERT OR REPLACE)

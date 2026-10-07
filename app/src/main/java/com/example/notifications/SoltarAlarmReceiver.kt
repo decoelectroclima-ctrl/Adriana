@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.widget.SoltarAppWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +39,7 @@ class SoltarAlarmReceiver : BroadcastReceiver() {
                             SoltarNotificationHelper.sendMandatoryJournalNotification(context)
                             // Re-encadena para el día siguiente
                             try {
-                                val db = AdrianaDatabase.getDatabase(context)
+                                val db = SoltarDatabase.getDatabase(context)
                                 val settings = db.soltarSettingsDao().getSettingsOnce()
                                 NotificationScheduler.scheduleMandatoryJournalReminder(
                                     context,

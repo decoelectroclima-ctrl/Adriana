@@ -14,7 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.MainActivity
 import com.example.R
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarFramework
 import com.example.widget.SoltarAppWidgetProvider
 import kotlinx.coroutines.CoroutineScope
@@ -246,7 +246,7 @@ object SoltarNotificationHelper {
     fun rescheduleCustomNotificationNextDay(context: Context, id: Long) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val db = AdrianaDatabase.getDatabase(context)
+                val db = SoltarDatabase.getDatabase(context)
                 val settings = db.soltarSettingsDao().getSettingsOnce() ?: return@launch
                 if (settings.customNotificationsJson.isNotBlank()) {
                     val list = json.decodeFromString<List<com.example.data.CustomNotificationItem>>(settings.customNotificationsJson)
@@ -300,7 +300,7 @@ object SoltarNotificationHelper {
 
     suspend fun processDailyReminder(context: Context) {
         try {
-            val db = AdrianaDatabase.getDatabase(context)
+            val db = SoltarDatabase.getDatabase(context)
             val settings = db.soltarSettingsDao().getSettingsOnce()
 
             if (settings != null && !settings.notificationsEnabled) {
@@ -411,7 +411,7 @@ object SoltarNotificationHelper {
             var userName = "Viajero"
 
             try {
-                val db = AdrianaDatabase.getDatabase(context)
+                val db = SoltarDatabase.getDatabase(context)
                 val settings = db.soltarSettingsDao().getSettingsOnce()
                 if (settings != null) {
                     framework = try {
@@ -445,7 +445,7 @@ object SoltarNotificationHelper {
             var adaptiveQuote = selectedQuote
             var adaptiveTitle = title
             try {
-                val db = AdrianaDatabase.getDatabase(context)
+                val db = SoltarDatabase.getDatabase(context)
                 val recentCheckins = db.checkinDao().getRecentCheckins(5)
                 if (recentCheckins.isNotEmpty()) {
                     adaptiveTitle = title

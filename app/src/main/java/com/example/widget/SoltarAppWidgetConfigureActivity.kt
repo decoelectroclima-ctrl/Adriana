@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarFramework
 import com.example.ui.theme.LocalSoltarColors
 import com.example.ui.theme.SoltarTheme
@@ -118,7 +118,7 @@ fun WidgetConfigureScreen(
         withContext(Dispatchers.IO) {
             val initialConfig = SoltarWidgetConfigManager.loadConfig(context, appWidgetId)
             try {
-                val db = AdrianaDatabase.getDatabase(context)
+                val db = SoltarDatabase.getDatabase(context)
                 val settings = db.soltarSettingsDao().getSettingsOnce()
                 if (settings != null) {
                     val currentTime = System.currentTimeMillis()

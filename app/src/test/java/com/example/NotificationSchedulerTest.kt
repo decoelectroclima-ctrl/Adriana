@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarSettingsEntity
 import com.example.notifications.NotificationScheduler
 import com.example.notifications.SoltarAlarmReceiver
@@ -122,7 +122,7 @@ class NotificationSchedulerTest {
     fun testReceiverExecutesSafelyWithRoomDataAndNoViewModel() {
         // Verificamos que el receiver procesa el intent con datos en Room sin fallar
         // y sin ninguna dependencia en ViewModels o servicios de IA pesados.
-        val db = Room.inMemoryDatabaseBuilder(context, AdrianaDatabase::class.java)
+        val db = Room.inMemoryDatabaseBuilder(context, SoltarDatabase::class.java)
             .allowMainThreadQueries()
             .build()
 

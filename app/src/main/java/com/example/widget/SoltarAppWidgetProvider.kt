@@ -15,7 +15,7 @@ import android.util.Log
 import android.widget.RemoteViews
 import com.example.MainActivity
 import com.example.R
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarFramework
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -177,7 +177,7 @@ class SoltarAppWidgetProvider : AppWidgetProvider() {
                 val config = SoltarWidgetConfigManager.loadConfig(context, appWidgetId)
 
                 try {
-                    val db = AdrianaDatabase.getDatabase(context)
+                    val db = SoltarDatabase.getDatabase(context)
                     val settings = db.soltarSettingsDao().getSettingsOnce()
                     if (settings != null) {
                         val currentTime = System.currentTimeMillis()

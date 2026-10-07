@@ -3,7 +3,7 @@ package com.example.contactocero
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +22,7 @@ data class AnclajeUiState(
 
 class ContactoCeroViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: SoltarRepository = SoltarRepository(AdrianaDatabase.getDatabase(application))
+    private val repository: SoltarRepository = SoltarRepository(SoltarDatabase.getDatabase(application))
 
     private val _uiState = MutableStateFlow(AnclajeUiState())
     val uiState: StateFlow<AnclajeUiState> = _uiState.asStateFlow()

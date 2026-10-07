@@ -17,14 +17,14 @@ import java.security.SecureRandom
 @RunWith(RobolectricTestRunner::class)
 class DataExportManagerTest {
 
-    private lateinit var db: AdrianaDatabase
+    private lateinit var db: SoltarDatabase
     private lateinit var exportManager: DataExportManager
     private lateinit var context: Context
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
-        db = Room.inMemoryDatabaseBuilder(context, AdrianaDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder(context, SoltarDatabase::class.java)
             .allowMainThreadQueries()
             .build()
         exportManager = DataExportManager(db)

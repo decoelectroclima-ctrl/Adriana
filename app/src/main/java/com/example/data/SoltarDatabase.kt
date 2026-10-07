@@ -36,7 +36,7 @@ import androidx.room.migration.Migration
     version = 32,
     exportSchema = false
 )
-abstract class AdrianaDatabase : RoomDatabase() {
+abstract class SoltarDatabase : RoomDatabase() {
     abstract fun checkinDao(): CheckinDao
     abstract fun urgeEpisodeDao(): UrgeEpisodeDao
     abstract fun thoughtDao(): ThoughtDao
@@ -69,13 +69,13 @@ abstract class AdrianaDatabase : RoomDatabase() {
         }
 
         @Volatile
-        private var INSTANCE: AdrianaDatabase? = null
+        private var INSTANCE: SoltarDatabase? = null
 
-        fun getDatabase(context: Context): AdrianaDatabase {
+        fun getDatabase(context: Context): SoltarDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    AdrianaDatabase::class.java,
+                    SoltarDatabase::class.java,
                     "adriana_database"
                 )
                 .addMigrations(MIGRATION_30_31)
@@ -86,7 +86,7 @@ abstract class AdrianaDatabase : RoomDatabase() {
             }
         }
 
-        suspend fun populateInitialDataIfEmpty(database: AdrianaDatabase) {
+        suspend fun populateInitialDataIfEmpty(database: SoltarDatabase) {
             try {
                 val settings = database.soltarSettingsDao().getSettingsOnce()
                 if (settings == null) {
@@ -96,7 +96,7 @@ abstract class AdrianaDatabase : RoomDatabase() {
             }
         }
 
-        suspend fun populateCleanData(database: AdrianaDatabase) {
+        suspend fun populateCleanData(database: SoltarDatabase) {
             database.soltarSettingsDao().saveSettings(
                 SoltarSettingsEntity(
                     id = 1,

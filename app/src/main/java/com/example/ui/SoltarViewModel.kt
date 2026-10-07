@@ -214,7 +214,7 @@ data class SoltarUiState(
 
 class SoltarViewModel(application: Application) : AndroidViewModel(application) {
 
-    val repository: SoltarRepository = SoltarRepository(AdrianaDatabase.getDatabase(application))
+    val repository: SoltarRepository = SoltarRepository(SoltarDatabase.getDatabase(application))
     val billingManager = BillingManager(application)
     val premiumProductDetails = billingManager.premiumProductDetails
     fun launchPurchase(activity: Activity, productDetails: ProductDetails) {
@@ -502,7 +502,7 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
     init {
         ContentEngine.store = SharedPrefsFreshnessStore(getApplication())
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            AdrianaDatabase.populateInitialDataIfEmpty(AdrianaDatabase.getDatabase(application))
+            SoltarDatabase.populateInitialDataIfEmpty(SoltarDatabase.getDatabase(application))
         }
         observeBillingSync()
         loadTodayCheckin()
@@ -724,11 +724,11 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetAppData() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val db = AdrianaDatabase.getDatabase(getApplication())
+            val db = SoltarDatabase.getDatabase(getApplication())
             db.clearAllTables()
             // Reset freshness store
             ContentEngine.store.clearAll()
-            AdrianaDatabase.populateInitialDataIfEmpty(db)
+            SoltarDatabase.populateInitialDataIfEmpty(db)
             // No need to call observeSettings(), it will re-trigger as the Room database flow updates
         }
     }
@@ -2634,7 +2634,7 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportData(pin: String, file: java.io.File): Boolean {
         return try {
-            val db = AdrianaDatabase.getDatabase(getApplication())
+            val db = SoltarDatabase.getDatabase(getApplication())
             val manager = DataExportManager(db)
             manager.exportData(pin, file)
             true
@@ -2646,7 +2646,7 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
 
     fun importData(pin: String, file: java.io.File): Boolean {
         return try {
-            val db = AdrianaDatabase.getDatabase(getApplication())
+            val db = SoltarDatabase.getDatabase(getApplication())
             val manager = DataExportManager(db)
             manager.importData(pin, file)
         } catch (e: Exception) {
@@ -2656,14 +2656,14 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     suspend fun generateKintsugiDocument(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        val db = AdrianaDatabase.getDatabase(getApplication())
+        val db = SoltarDatabase.getDatabase(getApplication())
         val manager = DataExportManager(db)
         manager.generateClinicalNarrativeReport()
     }
 
     suspend fun exportKintsugiToFile(pin: String, file: java.io.File): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val db = AdrianaDatabase.getDatabase(getApplication())
+            val db = SoltarDatabase.getDatabase(getApplication())
             val manager = DataExportManager(db)
             manager.exportClinicalNarrativeToFile(pin, file)
             true

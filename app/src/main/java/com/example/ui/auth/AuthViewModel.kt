@@ -3,7 +3,7 @@ package com.example.ui.auth
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.AdrianaDatabase
+import com.example.data.SoltarDatabase
 import com.example.data.SoltarRepository
 import com.example.data.SoltarSettingsEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +28,7 @@ data class AuthUiState(
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: SoltarRepository = SoltarRepository(AdrianaDatabase.getDatabase(application))
+    private val repository: SoltarRepository = SoltarRepository(SoltarDatabase.getDatabase(application))
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
