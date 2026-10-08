@@ -91,6 +91,7 @@ data class SoltarUiState(
     val isNoThinkingSheetVisible: Boolean = false,
     val isTimeCapsuleModalVisible: Boolean = false,
     val isEncounterSimulatorVisible: Boolean = false,
+    val isMessageSimulatorVisible: Boolean = false,
     val isWisdomLibraryVisible: Boolean = false,
     val isClosingRitualVisible: Boolean = false,
     val isVoluntaryExitVisible: Boolean = false,
@@ -723,13 +724,51 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun resetAppData() {
+        deleteAccountAndReset()
+    }
+
+    fun deleteAccountAndReset() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val db = SoltarDatabase.getDatabase(getApplication())
             db.clearAllTables()
             // Reset freshness store
             ContentEngine.store.clearAll()
-            SoltarDatabase.populateInitialDataIfEmpty(db)
-            // No need to call observeSettings(), it will re-trigger as the Room database flow updates
+            SoltarDatabase.populateCleanData(db)
+            com.example.widget.SoltarAppWidgetProvider.notifyWidgetDataChanged(getApplication())
+            com.example.notifications.NotificationScheduler.scheduleAll(getApplication())
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        currentTab = SoltarTab.INICIO,
+                        isOnboardingVisible = true,
+                        isAppLockPending = false,
+                        isAuthDialogVisible = false,
+                        isNeedHelpSheetVisible = false,
+                        isToolsShelfSheetVisible = false,
+                        isUrgeSheetVisible = false,
+                        isNoThinkingSheetVisible = false,
+                        isAiCompanionSheetVisible = false,
+                        isThoughtModalVisible = false,
+                        isAuditModalVisible = false,
+                        isIdealizationModalVisible = false,
+                        isLetterModalVisible = false,
+                        isIdentityGoalModalVisible = false,
+                        isRelapseModalVisible = false,
+                        isConversationAnalyzerVisible = false,
+                        isPaywallVisible = false,
+                        isSupportContactDialogVisible = false,
+                        isEmdrDialogVisible = false,
+                        isJournalModalVisible = false,
+                        isEmotionalCheckinVisible = false,
+                        isTimePickerDialogVisible = false,
+                        isMessageSimulatorVisible = false,
+                        isPrivacyPolicyVisible = false,
+                        isTermsConditionsVisible = false,
+                        notificationMessage = "Cuenta eliminada. Puedes comenzar de nuevo."
+                    )
+                }
+                playSound(com.example.audio.SoltarSoundManager.SoundType.TAP)
+            }
         }
     }
 
@@ -1556,12 +1595,17 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun openMessageSimulator() {
+        _uiState.update { it.copy(isMessageSimulatorVisible = true) }
+    }
+
+    fun closeMessageSimulator() {
+        _uiState.update { it.copy(isMessageSimulatorVisible = false) }
+    }
+
     fun toggleEncounterSimulator(visible: Boolean) {
-        if (!visible) { _uiState.update { it.copy(isEncounterSimulatorVisible = false) }; return }
-        val entitlements = UserEntitlements.fromSettings(settings.value)
-        openPremiumGated(entitlements.canAccessEncounterSimulator) {
-            _uiState.update { it.copy(isEncounterSimulatorVisible = true) }
-        }
+        // Obsoleto: sustituido por el simulador de mensajes de contención
+        _uiState.update { it.copy(isEncounterSimulatorVisible = false) }
     }
 
     fun toggleWisdomLibraryDialog(visible: Boolean) {
@@ -2601,7 +2645,7 @@ class SoltarViewModel(application: Application) : AndroidViewModel(application) 
     fun openPriorityTool(title: String) {
         when {
             title.contains("Impulso", true) -> openUrgeSheet()
-            title.contains("Simulacro", true) -> toggleEncounterSimulator(true)
+            title.contains("Simulacro", true) || title.contains("Mensaje", true) -> openMessageSimulator()
             title.contains("Auditoría", true) -> _uiState.update { it.copy(isAuditModalVisible = true) }
             title.contains("Idealización", true) -> _uiState.update { it.copy(isIdealizationModalVisible = true) }
             title.contains("Diario", true) -> openJournalModal()

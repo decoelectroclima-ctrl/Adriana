@@ -117,6 +117,7 @@ class MainActivity : FragmentActivity() {
                         uiState.isSupportContactDialogVisible ||
                         uiState.isOnboardingVisible ||
                         uiState.isEmdrDialogVisible ||
+                        uiState.isMessageSimulatorVisible ||
                         uiState.isAppLockPending
 
                 // Root Exit Confirmation BackHandler
@@ -419,10 +420,10 @@ class MainActivity : FragmentActivity() {
                         )
                     }
 
-                    if (uiState.isEncounterSimulatorVisible) {
-                        com.example.ui.dialogs.EncounterSimulatorDialog(
+                    if (uiState.isMessageSimulatorVisible) {
+                        com.example.ui.dialogs.MessageSimulatorDialog(
                             viewModel = viewModel,
-                            onDismiss = { viewModel.toggleEncounterSimulator(false) }
+                            onDismiss = { viewModel.closeMessageSimulator() }
                         )
                     }
 

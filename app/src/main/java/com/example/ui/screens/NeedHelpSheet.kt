@@ -328,6 +328,82 @@ fun NeedHelpSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             // =========================================================
+            // SIMULACRO DE MENSAJE A TU EX (CONTENCIÓN DE IMPULSO DIRECTO)
+            // =========================================================
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                        onDismiss()
+                        viewModel.openMessageSimulator()
+                    }
+                    .testTag("help_option_message_simulator"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SoltarSurfaceElevated),
+                border = BorderStroke(1.2.dp, SoltarAmber.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = SoltarAmber.copy(alpha = 0.15f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = SoltarAmber, modifier = Modifier.size(22.dp))
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Simulacro de Mensaje a tu Ex",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = SoltarAmber,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Escribe y suelta el impulso sin romper tu Contacto Cero",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Vuelca sin censura todo lo que necesitas decirle. Al terminar podrás activar la pausa de 10 min, activar funciones SOS o derivarlo a tu contacto de apoyo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            viewModel.playSound(SoltarSoundManager.SoundType.TAP)
+                            onDismiss()
+                            viewModel.openMessageSimulator()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SoltarAmber),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = SoltarBackground, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Iniciar Simulacro de Mensaje", color = SoltarBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // =========================================================
             // OPCIÓN 2: PROTOCOLO SOMÁTICO GENÉRICO (MODO IMPULSO 20 MIN)
             // =========================================================
             Card(

@@ -173,9 +173,9 @@ fun PaywallDialog(
                             subtitle = "Mensajes sellados hacia tu futuro con desbloqueo evolutivo."
                         )
                         FeatureRow(
-                            icon = Icons.Default.PersonSearch,
-                            title = "Simulacro de Encuentro con Ex",
-                            subtitle = "Entrenamiento de límites y respuestas asertivas ante situaciones reales."
+                            icon = Icons.Default.ChatBubbleOutline,
+                            title = "Simulador de Mensaje a tu Ex",
+                            subtitle = "Frena el impulso de escribir con pausa consciente y apoyo guiado."
                         )
                         FeatureRow(
                             icon = Icons.Default.FavoriteBorder,

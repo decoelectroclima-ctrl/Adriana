@@ -1904,12 +1904,12 @@ fun TodayScreen(
                         }
                     ),
                     ToolItem(
-                        title = "Simulacro de Encuentro",
-                        subtitle = "Practica conversaciones y límites",
-                        icon = Icons.Default.People,
+                        title = "Simulador de Mensaje",
+                        subtitle = "Frena el impulso de escribir a tu ex",
+                        icon = Icons.Default.ChatBubbleOutline,
                         onClick = {
                             viewModel.playSound(SoltarSoundManager.SoundType.TAP)
-                            viewModel.toggleEncounterSimulator(true)
+                            viewModel.openMessageSimulator()
                         }
                     ),
                     ToolItem(
@@ -2178,7 +2178,7 @@ fun TodayScreen(
                     com.example.ui.components.ToolItem("time_capsule", "Cápsula del tiempo", Icons.Default.Schedule) { viewModel.toggleTimeCapsuleModal(true) },
                     com.example.ui.components.ToolItem("wisdom", "Biblioteca de sabiduría", Icons.Default.MenuBook) { viewModel.toggleWisdomLibraryDialog(true) },
                     com.example.ui.components.ToolItem("support_contacts", "Contactos de apoyo", Icons.Default.ContactPhone) { viewModel.openSupportContactDialog(1) },
-                    com.example.ui.components.ToolItem("encounter_simulator", "Simulador de encuentro", Icons.Default.TheaterComedy) { viewModel.toggleEncounterSimulator(true) },
+                    com.example.ui.components.ToolItem("message_simulator", "Simulador de mensaje", Icons.Default.ChatBubbleOutline) { viewModel.toggleToolsShelfSheetVisible(false); viewModel.openMessageSimulator() },
                     com.example.ui.components.ToolItem("identity_goals", "Metas de identidad", Icons.Default.Flag) { viewModel.toggleIdentityGoalModal(true) },
                     com.example.ui.components.ToolItem("emdr_visual", "EMDR Visual", Icons.Default.Visibility) { viewModel.toggleToolsShelfSheetVisible(false); viewModel.openEmdrSession(nombreEx = settings?.exPartnerName?.takeIf { it.isNotBlank() } ?: settings?.exName ?: "") }
                 ),

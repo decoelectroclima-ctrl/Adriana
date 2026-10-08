@@ -421,27 +421,34 @@ fun ProfileScreen(
     if (showResetConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showResetConfirmDialog = false },
-            title = { Text("¿Restablecer datos locales?", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("¿Estás seguro de que deseas eliminar la cuenta?", color = UrgeAlertRed, fontWeight = FontWeight.Bold, fontSize = 17.sp) },
             text = {
                 Text(
-                    "Esta acción borrará tus registros locales y el historial de la IA, garantizando tu privacidad y tu derecho al olvido.",
+                    "Esta acción borrará de forma permanente tu cuenta, tu progreso en Contacto Cero, entradas de diario, cartas y toda tu información personal.\n\nLa aplicación se reiniciará para pedirte nuevamente todos los datos de inicio.",
                     color = TextSecondary,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.fullDataReset()
+                        authViewModel.deleteAccount()
+                        viewModel.deleteAccountAndReset()
                         showResetConfirmDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Borrar Todo", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("Eliminar cuenta", color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showResetConfirmDialog = false }) {
+                OutlinedButton(
+                    onClick = { showResetConfirmDialog = false },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
                     Text("Cancelar", color = TextSecondary)
                 }
             },
@@ -453,27 +460,34 @@ fun ProfileScreen(
     if (showDeleteAccountConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountConfirmDialog = false },
-            title = { Text("¿Eliminar cuenta y perfil?", color = UrgeAlertRed, fontWeight = FontWeight.Bold) },
+            title = { Text("¿Estás seguro de que deseas eliminar la cuenta?", color = UrgeAlertRed, fontWeight = FontWeight.Bold, fontSize = 17.sp) },
             text = {
                 Text(
-                    "Se borrarán tus credenciales de acceso, tu red de apoyo y todos tus registros asociados. Volverás a una sesión anónima.",
+                    "Esta acción borrará de forma permanente tu cuenta, tu progreso en Contacto Cero, entradas de diario, cartas y toda tu información personal.\n\nLa aplicación se reiniciará para pedirte nuevamente todos los datos de inicio.",
                     color = TextSecondary,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         authViewModel.deleteAccount()
+                        viewModel.deleteAccountAndReset()
                         showDeleteAccountConfirmDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertRed),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Eliminar Cuenta", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("Eliminar cuenta", color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteAccountConfirmDialog = false }) {
+                OutlinedButton(
+                    onClick = { showDeleteAccountConfirmDialog = false },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, SoltarBorder)
+                ) {
                     Text("Cancelar", color = TextSecondary)
                 }
             },
@@ -3218,14 +3232,18 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                     Button(
-                        onClick = { showResetConfirmDialog = true },
-                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        onClick = { showDeleteAccountConfirmDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .testTag("profile_delete_account_bottom_button"),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertBackground)
+                        colors = ButtonDefaults.buttonColors(containerColor = UrgeAlertBackground),
+                        border = BorderStroke(1.dp, UrgeAlertRed.copy(alpha = 0.5f))
                     ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = UrgeAlertRed)
+                        Icon(Icons.Default.DeleteForever, contentDescription = null, tint = UrgeAlertRed)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Borrar todos los datos locales", color = UrgeAlertRed, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("Eliminar cuenta", color = UrgeAlertRed, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
         }

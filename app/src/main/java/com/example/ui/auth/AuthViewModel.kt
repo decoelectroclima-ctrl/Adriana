@@ -236,7 +236,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             repository.saveSettings(
                 current.copy(
                     isLoggedIn = false,
-                    userName = "Viajero",
+                    userName = "",
+                    userEmail = "",
                     contact1Name = "",
                     contact1Phone = "",
                     contact1Relationship = "",
@@ -249,7 +250,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     subscriptionTier = "FREE",
                     isTrialActive = false,
                     biometricLockEnabled = false,
-                    pinHash = ""
+                    pinHash = "",
+                    onboardingCompleted = false
                 )
             )
             repository.clearAiMemory()
@@ -259,7 +261,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     failedAttempts = 0,
                     lockoutUntilMillis = 0L,
                     pinInput = "",
-                    confirmPinInput = ""
+                    confirmPinInput = "",
+                    isAuthDialogVisible = false
                 )
             }
         }
