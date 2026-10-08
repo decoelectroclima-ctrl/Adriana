@@ -30,6 +30,7 @@ object NotificationScheduler {
     const val ACTION_DAILY_REMINDER = "com.example.soltar.ACTION_DAILY_REMINDER"
     const val ACTION_MANDATORY_JOURNAL = "com.example.soltar.ACTION_MANDATORY_JOURNAL"
     const val ACTION_CUSTOM_NOTIFICATION = "com.example.soltar.ACTION_CUSTOM_NOTIFICATION"
+    const val EXTRA_SCHEDULED_TIME = "extra_scheduled_time"
 
     const val REQUEST_CODE_DAILY_ALARM = 1001
     const val REQUEST_CODE_MANDATORY_JOURNAL = 1005
@@ -162,8 +163,10 @@ object NotificationScheduler {
      * Programa la alarma diaria de reflexión, hitos o fechas de riesgo.
      */
     fun scheduleDailyReminder(context: Context, hourOfDay: Int = 21, minute: Int = 0) {
+        val triggerMillis = calculateNextTriggerMillis(hourOfDay, minute)
         val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
             action = ACTION_DAILY_REMINDER
+            putExtra(EXTRA_SCHEDULED_TIME, triggerMillis)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -171,7 +174,6 @@ object NotificationScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val triggerMillis = calculateNextTriggerMillis(hourOfDay, minute)
         setAlarmSafe(context, triggerMillis, pendingIntent, isCriticalSecurity = false)
     }
 
@@ -214,8 +216,10 @@ object NotificationScheduler {
      * Programa el recordatorio de diario obligatorio.
      */
     fun scheduleMandatoryJournalReminder(context: Context, hourOfDay: Int = 20, minute: Int = 0) {
+        val triggerMillis = calculateNextTriggerMillis(hourOfDay, minute)
         val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
             action = ACTION_MANDATORY_JOURNAL
+            putExtra(EXTRA_SCHEDULED_TIME, triggerMillis)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -223,7 +227,6 @@ object NotificationScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val triggerMillis = calculateNextTriggerMillis(hourOfDay, minute)
         setAlarmSafe(context, triggerMillis, pendingIntent, isCriticalSecurity = true)
     }
 
@@ -251,11 +254,13 @@ object NotificationScheduler {
      */
     fun scheduleCustomNotification(context: Context, item: CustomNotificationItem) {
         if (!item.enabled) return
+        val triggerMillis = calculateNextTriggerMillis(item.hour, item.minute)
         val intent = Intent(context, SoltarAlarmReceiver::class.java).apply {
             action = ACTION_CUSTOM_NOTIFICATION
             putExtra("notification_id", item.id)
             putExtra("notification_title", item.title)
             putExtra("notification_message", item.message)
+            putExtra(EXTRA_SCHEDULED_TIME, triggerMillis)
         }
         val requestCode = (3000 + (Math.abs(item.id) % 10000)).toInt()
         val pendingIntent = PendingIntent.getBroadcast(
@@ -264,8 +269,26 @@ object NotificationScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val triggerMillis = calculateNextTriggerMillis(item.hour, item.minute)
         setAlarmSafe(context, triggerMillis, pendingIntent, isCriticalSecurity = false)
+    }
+
+    /**
+     * Reprograma una notificación personalizada para el día siguiente leyendo su configuración.
+     */
+    suspend fun rescheduleCustomNotification(context: Context, id: Long) {
+        try {
+            val db = SoltarDatabase.getDatabase(context)
+            val settings = db.soltarSettingsDao().getSettingsOnce() ?: return
+            if (settings.customNotificationsJson.isNotBlank()) {
+                val list = json.decodeFromString<List<CustomNotificationItem>>(settings.customNotificationsJson)
+                val item = list.find { it.id == id }
+                if (item != null && item.enabled) {
+                    scheduleCustomNotification(context, item)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error reprogramando notificación personalizada $id: ${e.message}")
+        }
     }
 
     /**

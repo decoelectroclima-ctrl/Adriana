@@ -10,7 +10,6 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="false"
@@ -62,7 +61,7 @@
         <!-- Scheduled Alarms & Daily Notifications Receiver -->
         <receiver
             android:name=".notifications.SoltarAlarmReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.example.soltar.ACTION_DAILY_REMINDER" />
                 <action android:name="com.example.soltar.ACTION_MANDATORY_JOURNAL" />

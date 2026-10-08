@@ -245,22 +245,15 @@ fun NotificationReliabilityDialog(
                         actionLabel = if (ignoringBatteryOptimizations) "Comprobado" else "Desactivar Restricción",
                         onAction = {
                             try {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                        data = Uri.parse("package:${context.packageName}")
-                                    }
-                                    context.startActivity(intent)
-                                }
+                                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                context.startActivity(intent)
                             } catch (_: Exception) {
                                 try {
-                                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
                                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                         data = Uri.parse("package:${context.packageName}")
                                     }
                                     context.startActivity(intent)
-                                }
+                                } catch (_: Exception) {}
                             }
                             refreshTrigger++
                         }

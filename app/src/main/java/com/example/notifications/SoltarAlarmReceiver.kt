@@ -14,8 +14,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Receptor de alarmas programadas y eventos del sistema (B2, B4).
  * Utiliza goAsync() para garantizar tiempo de ejecución sin riesgo de proceso muerto.
- * Ejecuta exclusivamente consultas ligeras a Room y lógica determinista (sin ViewModels,
- * sin llamadas a Gemini ni modelos on-device en este camino).
+ * Reprograma SIEMPRE como primer paso para blindar la cadena de avisos ante fallos o timeouts,
+ * y descarta notificaciones si la alarma se dispara con retraso excesivo (ej. terminal apagado).
  */
 class SoltarAlarmReceiver : BroadcastReceiver() {
 
@@ -26,18 +26,39 @@ class SoltarAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 withTimeoutOrNull(8000L) {
+                    val scheduledTime = intent.getLongExtra(NotificationScheduler.EXTRA_SCHEDULED_TIME, 0L)
+                    val isStale = scheduledTime > 0L && (System.currentTimeMillis() - scheduledTime > MAX_ALARM_DELAY_MILLIS)
+
                     when (action) {
                         SoltarNotificationHelper.ACTION_DAILY_REMINDER,
                         NotificationScheduler.ACTION_DAILY_REMINDER -> {
-                            // Procesa recordatorio diario / hito / fecha de riesgo y re-encadena la alarma
-                            SoltarNotificationHelper.processDailyReminder(context)
+                            // 1. Reprogramar la siguiente alarma ANTES de procesar para blindar la cadena
+                            try {
+                                val db = SoltarDatabase.getDatabase(context)
+                                val settings = db.soltarSettingsDao().getSettingsOnce()
+                                if (settings == null || settings.notificationsEnabled) {
+                                    NotificationScheduler.scheduleDailyReminder(
+                                        context,
+                                        settings?.reminderHour ?: 21,
+                                        settings?.reminderMinute ?: 0
+                                    )
+                                }
+                            } catch (_: Exception) {
+                                NotificationScheduler.scheduleDailyReminder(context, 21, 0)
+                            }
+
+                            // 2. Solo si no viene con retraso excesivo, procesar y mostrar notificación
+                            if (isStale) {
+                                Log.w(TAG, "Alarma diaria descartada por retraso excesivo (${(System.currentTimeMillis() - scheduledTime) / 60000} min). No se muestra notificación obsoleta.")
+                            } else {
+                                SoltarNotificationHelper.processDailyReminder(context)
+                            }
                             SoltarAppWidgetProvider.notifyWidgetDataChanged(context)
                         }
 
                         SoltarNotificationHelper.ACTION_MANDATORY_JOURNAL,
                         NotificationScheduler.ACTION_MANDATORY_JOURNAL -> {
-                            SoltarNotificationHelper.sendMandatoryJournalNotification(context)
-                            // Re-encadena para el día siguiente
+                            // 1. Reprogramar la alarma de diario obligatorio ANTES de procesar
                             try {
                                 val db = SoltarDatabase.getDatabase(context)
                                 val settings = db.soltarSettingsDao().getSettingsOnce()
@@ -49,6 +70,13 @@ class SoltarAlarmReceiver : BroadcastReceiver() {
                             } catch (_: Exception) {
                                 NotificationScheduler.scheduleMandatoryJournalReminder(context, 20, 0)
                             }
+
+                            // 2. Solo si no viene con retraso excesivo, generar y mostrar la notificación
+                            if (isStale) {
+                                Log.w(TAG, "Alarma de diario obligatorio descartada por retraso excesivo (${(System.currentTimeMillis() - scheduledTime) / 60000} min). No se muestra notificación obsoleta.")
+                            } else {
+                                SoltarNotificationHelper.sendMandatoryJournalNotification(context)
+                            }
                             SoltarAppWidgetProvider.notifyWidgetDataChanged(context)
                         }
 
@@ -57,9 +85,17 @@ class SoltarAlarmReceiver : BroadcastReceiver() {
                             val id = intent.getLongExtra("notification_id", -1L)
                             val title = intent.getStringExtra("notification_title") ?: "Recordatorio de Soberanía"
                             val message = intent.getStringExtra("notification_message") ?: "Mantén tu enfoque y respira hondo."
-                            SoltarNotificationHelper.sendCustomNotification(context, title, message)
+
+                            // 1. Reprogramar la notificación personalizada para el día siguiente ANTES de procesar
                             if (id != -1L) {
-                                SoltarNotificationHelper.rescheduleCustomNotificationNextDay(context, id)
+                                NotificationScheduler.rescheduleCustomNotification(context, id)
+                            }
+
+                            // 2. Solo si no viene con retraso excesivo, generar y mostrar la notificación
+                            if (isStale) {
+                                Log.w(TAG, "Alarma personalizada descartada por retraso excesivo (${(System.currentTimeMillis() - scheduledTime) / 60000} min). No se muestra notificación obsoleta.")
+                            } else {
+                                SoltarNotificationHelper.sendCustomNotification(context, title, message)
                             }
                         }
 
@@ -89,5 +125,8 @@ class SoltarAlarmReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "SoltarAlarmReceiver"
+
+        /** Margen razonable de tolerancia (2 horas) para descartar alarmas desfasadas por apagado prolongado */
+        const val MAX_ALARM_DELAY_MILLIS = 2 * 60 * 60 * 1000L
     }
 }

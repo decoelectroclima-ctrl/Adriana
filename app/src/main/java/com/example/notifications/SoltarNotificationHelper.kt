@@ -245,17 +245,7 @@ object SoltarNotificationHelper {
 
     fun rescheduleCustomNotificationNextDay(context: Context, id: Long) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = SoltarDatabase.getDatabase(context)
-                val settings = db.soltarSettingsDao().getSettingsOnce() ?: return@launch
-                if (settings.customNotificationsJson.isNotBlank()) {
-                    val list = json.decodeFromString<List<com.example.data.CustomNotificationItem>>(settings.customNotificationsJson)
-                    val item = list.find { it.id == id }
-                    if (item != null && item.enabled) {
-                        scheduleCustomNotification(context, item)
-                    }
-                }
-            } catch (_: Exception) {}
+            NotificationScheduler.rescheduleCustomNotification(context, id)
         }
     }
 
@@ -327,7 +317,6 @@ object SoltarNotificationHelper {
                 if (settings != null) {
                     db.soltarSettingsDao().saveSettings(settings.copy(lastMilestoneCelebrated = daysElapsed))
                 }
-                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
                 return
             }
 
@@ -362,7 +351,6 @@ object SoltarNotificationHelper {
             }
 
             if (riskDateTriggered) {
-                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
                 return
             }
 
@@ -386,18 +374,13 @@ object SoltarNotificationHelper {
                         settings.copy(lastInactivityNoticeSentTimestamp = System.currentTimeMillis())
                     )
                 }
-                NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
                 return
             }
 
             // 3. Regular Daily Check-in & Wisdom Reminder
             sendDailyCheckinNotification(context)
-
-            // Re-encadena para el día siguiente (Cadena garantizada B2)
-            NotificationScheduler.scheduleDailyReminder(context, settings?.reminderHour ?: 21, settings?.reminderMinute ?: 0)
         } catch (_: Exception) {
             sendDailyCheckinNotification(context)
-            NotificationScheduler.scheduleDailyReminder(context, 21, 0)
         }
     }
 
